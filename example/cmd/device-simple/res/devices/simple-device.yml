@@ -1,4 +1,4 @@
-deviceList:
+List:
   - name: Simple-Device01
     profileName: Simple-Device
     description: Example of Simple Device
