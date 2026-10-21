@@ -19,38 +19,38 @@ import (
 
 // InitCache Init basic state for cache
 func InitCache(instanceName string, baseServiceName string, dic *di.Container) errors.EdgeX {
-	dc := bootstrapContainer.DeviceClientFrom(dic.Get)
-	dpc := bootstrapContainer.DeviceProfileClientFrom(dic.Get)
+	dc := bootstrapContainer.NodeClientFrom(dic.Get)
+	dpc := bootstrapContainer.ProfileClientFrom(dic.Get)
 	pwc := bootstrapContainer.ProvisionWatcherClientFrom(dic.Get)
 
-	// init device cache
-	deviceRes, err := dc.DevicesByServiceName(context.Background(), instanceName, 0, -1)
+	// init node cache
+	nodeRes, err := dc.NodesByServiceName(context.Background(), instanceName, 0, -1)
 	if err != nil {
 		return err
 	}
-	devices := make([]models.Device, len(deviceRes.Devices))
-	for i := range deviceRes.Devices {
-		devices[i] = dtos.ToDeviceModel(deviceRes.Devices[i])
+	nodes := make([]models.Node, len(nodeRes.Nodes))
+	for i := range nodeRes.Nodes {
+		nodes[i] = dtos.ToNodeModel(nodeRes.Nodes[i])
 	}
-	newDeviceCache(devices, dic)
+	newNodeCache(nodes, dic)
 
 	// init profile cache
-	profiles := make([]models.DeviceProfile, 0, len(devices))
-	for _, d := range devices {
+	profiles := make([]models.Profile, 0, len(nodes))
+	for _, d := range nodes {
 		if len(d.ProfileName) == 0 {
 			continue
 		}
-		res, err := dpc.DeviceProfileByName(context.Background(), d.ProfileName)
+		res, err := dpc.ProfileByName(context.Background(), d.ProfileName)
 		if err != nil {
 			return err
 		}
-		profiles = append(profiles, dtos.ToDeviceProfileModel(res.Profile))
+		profiles = append(profiles, dtos.ToProfileModel(res.Profile))
 	}
 	newProfileCache(profiles)
 
 	// init provision watcher cache
 	// baseServiceName is the service name w/o the instance portion added when -i/--instance flag is used.
-	// Using baseServiceName here since ProvisionWatchers are used by all instances of the device service and thus have the ServiceName set to the baseServiceName.
+	// Using baseServiceName here since ProvisionWatchers are used by all instances of the node service and thus have the ServiceName set to the baseServiceName.
 	pwRes, err := pwc.ProvisionWatchersByServiceName(context.Background(), baseServiceName, 0, -1)
 	if err != nil {
 		return err

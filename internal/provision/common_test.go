@@ -20,15 +20,15 @@ func Test_GetFileType(t *testing.T) {
 		path             string
 		expectedFileType FileType
 	}{
-		{"valid get Yaml file type", path.Join("..", "..", "example", "cmd", "device-simple", "res", "devices", "simple-device.yml"), YAML},
-		{"valid get Json file type", path.Join("..", "..", "example", "cmd", "device-simple", "res", "devices", "simple-device.json"), JSON},
-		{"valid get other file type", path.Join("..", "..", "example", "cmd", "device-simple", "res", "devices", "simple-device.bogus"), OTHER},
-		{"valid EdgeX Username/Password URI get Yaml file type", "http://edgexuser:edgexpasswd@httpd-auth:80/http_files/simple-device.yaml", YAML},
-		{"valid EdgeX Username/Password URI get Json file type", "http://edgexuser:edgexpasswd@httpd-auth:80/http_files/simple-device.json", JSON},
-		{"valid EdgeX Username/Password URI get other file type", "http://edgexuser:edgexpasswd@httpd-auth:80/http_files/simple-device.bogus", OTHER},
-		{"valid EdgeX Secret URI get Yaml file type", "http://httpd-auth:80/http_files/simple-device.yaml?edgexSecretName=httpserver", YAML},
-		{"valid EdgeX Secret URI get Json file type", "http://httpd-auth:80/http_files/simple-device.json?edgexSecretName=httpserver", JSON},
-		{"valid EdgeX Secret URI get other file type", "http://httpd-auth:80/http_files/simple-device.bogus?edgexSecretName=httpserver", OTHER},
+		{"valid get Yaml file type", path.Join("..", "..", "example", "cmd", "node-simple", "res", "nodes", "simple-node.yml"), YAML},
+		{"valid get Json file type", path.Join("..", "..", "example", "cmd", "node-simple", "res", "nodes", "simple-node.json"), JSON},
+		{"valid get other file type", path.Join("..", "..", "example", "cmd", "node-simple", "res", "nodes", "simple-node.bogus"), OTHER},
+		{"valid EdgeX Username/Password URI get Yaml file type", "http://edgexuser:edgexpasswd@httpd-auth:80/http_files/simple-node.yaml", YAML},
+		{"valid EdgeX Username/Password URI get Json file type", "http://edgexuser:edgexpasswd@httpd-auth:80/http_files/simple-node.json", JSON},
+		{"valid EdgeX Username/Password URI get other file type", "http://edgexuser:edgexpasswd@httpd-auth:80/http_files/simple-node.bogus", OTHER},
+		{"valid EdgeX Secret URI get Yaml file type", "http://httpd-auth:80/http_files/simple-node.yaml?edgexSecretName=httpserver", YAML},
+		{"valid EdgeX Secret URI get Json file type", "http://httpd-auth:80/http_files/simple-node.json?edgexSecretName=httpserver", JSON},
+		{"valid EdgeX Secret URI get other file type", "http://httpd-auth:80/http_files/simple-node.bogus?edgexSecretName=httpserver", OTHER},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -46,9 +46,9 @@ func Test_GetFullAndRedactedURI(t *testing.T) {
 		expectedURI      string
 		expectedRedacted string
 	}{
-		{"valid no secret uri", "https://raw.githubusercontent.com/edgexfoundry/device-virtual-go/main/cmd/res/devices/devices.yaml", "device-simple.yaml", "https://raw.githubusercontent.com/edgexfoundry/device-virtual-go/main/cmd/res/devices/device-simple.yaml", "https://raw.githubusercontent.com/edgexfoundry/device-virtual-go/main/cmd/res/devices/device-simple.yaml"},
-		{"valid query secret uri", "https://raw.githubusercontent.com/edgexfoundry/device-simple/main/devices/index.json?edgexSecretName=githubCredentials", "device-simple.yaml", "https://raw.githubusercontent.com/edgexfoundry/device-simple/main/devices/device-simple.yaml?edgexSecretName=githubCredentials", "https://raw.githubusercontent.com/edgexfoundry/device-simple/main/devices/device-simple.yaml?edgexSecretName=githubCredentials"},
-		{"valid query secret uri", "https://myuser:mypassword@raw.githubusercontent.com/edgexfoundry/device-simple/main/devices/index.json", "device-simple.yaml", "https://myuser:mypassword@raw.githubusercontent.com/edgexfoundry/device-simple/main/devices/device-simple.yaml", "https://myuser:xxxxx@raw.githubusercontent.com/edgexfoundry/device-simple/main/devices/device-simple.yaml"},
+		{"valid no secret uri", "https://raw.githubusercontent.com/edgexfoundry/node-virtual-go/main/cmd/res/nodes/nodes.yaml", "node-simple.yaml", "https://raw.githubusercontent.com/edgexfoundry/node-virtual-go/main/cmd/res/nodes/node-simple.yaml", "https://raw.githubusercontent.com/edgexfoundry/node-virtual-go/main/cmd/res/nodes/node-simple.yaml"},
+		{"valid query secret uri", "https://raw.githubusercontent.com/edgexfoundry/node-simple/main/nodes/index.json?edgexSecretName=githubCredentials", "node-simple.yaml", "https://raw.githubusercontent.com/edgexfoundry/node-simple/main/nodes/node-simple.yaml?edgexSecretName=githubCredentials", "https://raw.githubusercontent.com/edgexfoundry/node-simple/main/nodes/node-simple.yaml?edgexSecretName=githubCredentials"},
+		{"valid query secret uri", "https://myuser:mypassword@raw.githubusercontent.com/edgexfoundry/node-simple/main/nodes/index.json", "node-simple.yaml", "https://myuser:mypassword@raw.githubusercontent.com/edgexfoundry/node-simple/main/nodes/node-simple.yaml", "https://myuser:xxxxx@raw.githubusercontent.com/edgexfoundry/node-simple/main/nodes/node-simple.yaml"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

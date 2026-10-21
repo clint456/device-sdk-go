@@ -23,9 +23,9 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 	msgMocks "github.com/edgexfoundry/go-mod-messaging/v4/messaging/mocks"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -33,21 +33,21 @@ import (
 )
 
 const (
-	TestDeviceService             = "testDeviceService"
-	TestDeviceWithTags            = "testDeviceWithTags"
-	TestDeviceWithoutTags         = "testDeviceWithoutTags"
-	TestProfile                   = "testProfile"
-	TestDeviceResourceWithTags    = "testResourceWithTags"
-	TestDeviceResourceWithoutTags = "testResourceWithoutTags"
-	TestDeviceCommandWithTags     = "testCommandWithTags"
-	TestDeviceCommandWithoutTags  = "testCommandWithoutTags"
-	TestResourceTagName           = "testResourceTagName"
-	TestResourceTagValue          = "testResourceTagValue"
-	TestCommandTagName            = "testCommandTagName"
-	TestCommandTagValue           = "testCommandTagValue"
-	TestDeviceTagName             = "testDeviceTagName"
-	TestDeviceTagValue            = "testDeviceTagValue"
-	TestDuplicateTagName          = "testDuplicateTagName"
+	TestNodeService         = "testNodeService"
+	TestNodeWithTags        = "testNodeWithTags"
+	TestNodeWithoutTags     = "testNodeWithoutTags"
+	TestProfile             = "testProfile"
+	TestResourceWithTags    = "testResourceWithTags"
+	TestResourceWithoutTags = "testResourceWithoutTags"
+	TestCommandWithTags     = "testCommandWithTags"
+	TestCommandWithoutTags  = "testCommandWithoutTags"
+	TestResourceTagName     = "testResourceTagName"
+	TestResourceTagValue    = "testResourceTagValue"
+	TestCommandTagName      = "testCommandTagName"
+	TestCommandTagValue     = "testCommandTagValue"
+	TestNodeTagName         = "testNodeTagName"
+	TestNodeTagValue        = "testNodeTagValue"
+	TestDuplicateTagName    = "testDuplicateTagName"
 
 	testUUIDString = "ca93c8fa-9919-4ec5-85d3-f81b2b6a7bc1"
 )
@@ -55,9 +55,9 @@ const (
 var TestProtocols map[string]dtos.ProtocolProperties
 
 func buildEvent() dtos.Event {
-	event := dtos.NewEvent(TestProfile, TestDeviceWithTags, TestDeviceCommandWithTags)
+	event := dtos.NewEvent(TestProfile, TestNodeWithTags, TestCommandWithTags)
 	value := string(make([]byte, 1000))
-	_ = event.AddSimpleReading(TestDeviceResourceWithTags, common.ValueTypeString, value)
+	_ = event.AddSimpleReading(TestResourceWithTags, common.ValueTypeString, value)
 	event.Id = testUUIDString
 	event.Readings[0].Id = testUUIDString
 	return event
@@ -65,62 +65,62 @@ func buildEvent() dtos.Event {
 
 func NewMockDIC() *di.Container {
 	configuration := &config.ConfigurationStruct{
-		Device: config.DeviceInfo{MaxCmdOps: 1},
+		Node: config.NodeInfo{MaxCmdOps: 1},
 	}
-	deviceService := &models.DeviceService{Name: TestDeviceService}
+	nodeService := &models.NodeService{Name: TestNodeService}
 
-	devices := responses.MultiDevicesResponse{
-		Devices: []dtos.Device{
+	nodes := responses.MultiNodesResponse{
+		Nodes: []dtos.Node{
 			{
-				Name:        TestDeviceWithTags,
+				Name:        TestNodeWithTags,
 				ProfileName: TestProfile,
 				Tags: dtos.Tags{
-					TestDeviceTagName:    TestDeviceTagValue,
-					TestDuplicateTagName: TestDeviceTagValue,
+					TestNodeTagName:      TestNodeTagValue,
+					TestDuplicateTagName: TestNodeTagValue,
 				},
 			},
 			{
-				Name:        TestDeviceWithoutTags,
+				Name:        TestNodeWithoutTags,
 				ProfileName: TestProfile,
 			},
 		},
 	}
-	dcMock := &clientMocks.DeviceClient{}
-	dcMock.On("DevicesByServiceName", context.Background(), TestDeviceService, 0, -1).Return(devices, nil)
+	dcMock := &clientMocks.NodeClient{}
+	dcMock.On("NodesByServiceName", context.Background(), TestNodeService, 0, -1).Return(nodes, nil)
 
-	profile := responses.DeviceProfileResponse{
-		Profile: dtos.DeviceProfile{
-			DeviceProfileBasicInfo: dtos.DeviceProfileBasicInfo{Name: TestProfile},
-			DeviceResources: []dtos.DeviceResource{
+	profile := responses.ProfileResponse{
+		Profile: dtos.Profile{
+			ProfileBasicInfo: dtos.ProfileBasicInfo{Name: TestProfile},
+			Resources: []dtos.Resource{
 				{
-					Name: TestDeviceResourceWithTags,
+					Name: TestResourceWithTags,
 					Tags: dtos.Tags{
 						TestResourceTagName: TestResourceTagValue,
 					},
 				},
 				{
-					Name: TestDeviceResourceWithoutTags,
+					Name: TestResourceWithoutTags,
 				},
 			},
-			DeviceCommands: []dtos.DeviceCommand{
+			Commands: []dtos.Command{
 				{
-					Name: TestDeviceCommandWithTags,
+					Name: TestCommandWithTags,
 					Tags: dtos.Tags{
 						TestCommandTagName:   TestCommandTagValue,
 						TestDuplicateTagName: TestCommandTagValue,
 					},
 				},
 				{
-					Name: TestDeviceCommandWithoutTags,
+					Name: TestCommandWithoutTags,
 				},
 			},
 		},
 	}
-	dpcMock := &clientMocks.DeviceProfileClient{}
-	dpcMock.On("DeviceProfileByName", context.Background(), TestProfile).Return(profile, nil)
+	dpcMock := &clientMocks.ProfileClient{}
+	dpcMock.On("ProfileByName", context.Background(), TestProfile).Return(profile, nil)
 
 	pwcMock := &clientMocks.ProvisionWatcherClient{}
-	pwcMock.On("ProvisionWatchersByServiceName", context.Background(), TestDeviceService, 0, -1).Return(responses.MultiProvisionWatchersResponse{}, nil)
+	pwcMock.On("ProvisionWatchersByServiceName", context.Background(), TestNodeService, 0, -1).Return(responses.MultiProvisionWatchersResponse{}, nil)
 
 	mockMetricsManager := &mocks.MetricsManager{}
 	mockMetricsManager.On("Register", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -130,16 +130,16 @@ func NewMockDIC() *di.Container {
 		container.ConfigurationName: func(get di.Get) interface{} {
 			return configuration
 		},
-		container.DeviceServiceName: func(get di.Get) any {
-			return deviceService
+		container.NodeServiceName: func(get di.Get) any {
+			return nodeService
 		},
 		bootstrapContainer.LoggingClientInterfaceName: func(get di.Get) interface{} {
 			return logger.NewMockClient()
 		},
-		bootstrapContainer.DeviceClientName: func(get di.Get) interface{} {
+		bootstrapContainer.NodeClientName: func(get di.Get) interface{} {
 			return dcMock
 		},
-		bootstrapContainer.DeviceProfileClientName: func(get di.Get) interface{} {
+		bootstrapContainer.ProfileClientName: func(get di.Get) interface{} {
 			return dpcMock
 		},
 		bootstrapContainer.ProvisionWatcherClientName: func(get di.Get) interface{} {
@@ -273,13 +273,13 @@ func TestInitializeSentMetrics(t *testing.T) {
 
 func TestAddReadingTags(t *testing.T) {
 	dic := NewMockDIC()
-	edgexErr := cache.InitCache(TestDeviceService, TestDeviceService, dic)
+	edgexErr := cache.InitCache(TestNodeService, TestNodeService, dic)
 	require.NoError(t, edgexErr)
-	readingWithTags, err := dtos.NewSimpleReading(TestProfile, TestDeviceWithTags, TestDeviceResourceWithTags, common.ValueTypeString, "")
+	readingWithTags, err := dtos.NewSimpleReading(TestProfile, TestNodeWithTags, TestResourceWithTags, common.ValueTypeString, "")
 	require.NoError(t, err)
-	readingWithoutTags, err := dtos.NewSimpleReading(TestProfile, TestDeviceWithTags, TestDeviceResourceWithoutTags, common.ValueTypeString, "")
+	readingWithoutTags, err := dtos.NewSimpleReading(TestProfile, TestNodeWithTags, TestResourceWithoutTags, common.ValueTypeString, "")
 	require.NoError(t, err)
-	readingResourceNotFound, err := dtos.NewSimpleReading(TestProfile, TestDeviceWithTags, "notFound", common.ValueTypeString, "")
+	readingResourceNotFound, err := dtos.NewSimpleReading(TestProfile, TestNodeWithTags, "notFound", common.ValueTypeString, "")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -307,42 +307,42 @@ func TestAddReadingTags(t *testing.T) {
 
 func TestAddEventTags(t *testing.T) {
 	dic := NewMockDIC()
-	edgexErr := cache.InitCache(TestDeviceService, TestDeviceService, dic)
+	edgexErr := cache.InitCache(TestNodeService, TestNodeService, dic)
 	require.NoError(t, edgexErr)
 
-	expectedDeviceTags := dtos.Tags{TestDeviceTagName: TestDeviceTagValue, TestDuplicateTagName: TestDeviceTagValue}
+	expectedNodeTags := dtos.Tags{TestNodeTagName: TestNodeTagValue, TestDuplicateTagName: TestNodeTagValue}
 	expectedCommandTags := dtos.Tags{TestCommandTagName: TestCommandTagValue, TestDuplicateTagName: TestCommandTagValue}
 
 	tests := []struct {
 		Name                    string
 		Event                   dtos.Event
-		ExpectToHaveDeviceTags  bool
+		ExpectToHaveNodeTags    bool
 		ExpectToHaveCommandTags bool
 	}{
-		{"Happy Path", dtos.NewEvent(TestProfile, TestDeviceWithTags, TestDeviceCommandWithTags), true, true},
-		{"No Tags", dtos.NewEvent(TestProfile, TestDeviceWithoutTags, TestDeviceCommandWithoutTags), false, false},
-		{"No Device Tags", dtos.NewEvent(TestProfile, TestDeviceWithoutTags, TestDeviceCommandWithTags), false, true},
-		{"No Command Tags", dtos.NewEvent(TestProfile, TestDeviceWithTags, TestDeviceCommandWithoutTags), true, false},
+		{"Happy Path", dtos.NewEvent(TestProfile, TestNodeWithTags, TestCommandWithTags), true, true},
+		{"No Tags", dtos.NewEvent(TestProfile, TestNodeWithoutTags, TestCommandWithoutTags), false, false},
+		{"No Node Tags", dtos.NewEvent(TestProfile, TestNodeWithoutTags, TestCommandWithTags), false, true},
+		{"No Command Tags", dtos.NewEvent(TestProfile, TestNodeWithTags, TestCommandWithoutTags), true, false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			event := test.Event
 			AddEventTags(&event)
-			if test.ExpectToHaveDeviceTags && test.ExpectToHaveCommandTags {
-				expectedCommandTags[TestDuplicateTagName] = TestDeviceTagValue
+			if test.ExpectToHaveNodeTags && test.ExpectToHaveCommandTags {
+				expectedCommandTags[TestDuplicateTagName] = TestNodeTagValue
 			} else {
 				expectedCommandTags[TestDuplicateTagName] = TestCommandTagValue
 			}
-			if !test.ExpectToHaveDeviceTags && !test.ExpectToHaveCommandTags {
+			if !test.ExpectToHaveNodeTags && !test.ExpectToHaveCommandTags {
 				require.Empty(t, event.Tags)
 			} else {
 				require.NotEmpty(t, event.Tags)
 			}
-			if test.ExpectToHaveDeviceTags {
-				assert.Subset(t, event.Tags, expectedDeviceTags)
+			if test.ExpectToHaveNodeTags {
+				assert.Subset(t, event.Tags, expectedNodeTags)
 			} else {
-				assert.NotSubset(t, event.Tags, expectedDeviceTags)
+				assert.NotSubset(t, event.Tags, expectedNodeTags)
 			}
 			if test.ExpectToHaveCommandTags {
 				assert.Subset(t, event.Tags, expectedCommandTags)

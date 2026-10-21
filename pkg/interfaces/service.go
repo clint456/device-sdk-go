@@ -13,7 +13,7 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/clients/logger"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 
 	"github.com/labstack/echo/v4"
 )
@@ -22,7 +22,7 @@ import (
 // in the Configuration Provider (aka Consul). Services using custom configuration must implement this interface
 // on their custom configuration, even if they do not use Configuration Provider. If they do not use the
 // Configuration Provider they can have a dummy implementation of this interface.
-// This wraps the actual interface from go-mod-bootstrap so device service code doesn't have to have the additional
+// This wraps the actual interface from go-mod-bootstrap so node service code doesn't have to have the additional
 // direct import of go-mod-bootstrap.
 type UpdatableConfig interface {
 	interfaces.UpdatableConfig
@@ -36,34 +36,34 @@ const (
 	Authenticated   Authentication = true
 )
 
-// DeviceServiceSDK defines the interface for an EdgeX Device Service SDK
-type DeviceServiceSDK interface {
-	// AddDevice adds a new Device to the Device Service and Core Metadata
-	// Returns new Device id or non-nil error.
-	AddDevice(device models.Device) (string, error)
-	// Devices return all managed Devices from cache
-	Devices() []models.Device
-	// GetDeviceByName returns the Device by its name if it exists in the cache, or returns an error.
-	GetDeviceByName(name string) (models.Device, error)
-	// UpdateDevice updates the Device in the cache and ensures that the
+// NodeServiceSDK defines the interface for an EdgeX Node Service SDK
+type NodeServiceSDK interface {
+	// AddNode adds a new Node to the Node Service and Core Metadata
+	// Returns new Node id or non-nil error.
+	AddNode(node models.Node) (string, error)
+	// Nodes return all managed Nodes from cache
+	Nodes() []models.Node
+	// GetNodeByName returns the Node by its name if it exists in the cache, or returns an error.
+	GetNodeByName(name string) (models.Node, error)
+	// UpdateNode updates the Node in the cache and ensures that the
 	// copy in Core Metadata is also updated.
-	UpdateDevice(device models.Device) error
-	// RemoveDeviceByName removes the specified Device by name from the cache and ensures that the
+	UpdateNode(node models.Node) error
+	// RemoveNodeByName removes the specified Node by name from the cache and ensures that the
 	// instance in Core Metadata is also removed.
-	RemoveDeviceByName(name string) error
-	// AddDeviceProfile adds a new DeviceProfile to the Device Service and Core Metadata
-	// Returns new DeviceProfile id or non-nil error.
-	AddDeviceProfile(profile models.DeviceProfile) (string, error)
-	// DeviceProfiles return all managed DeviceProfiles from cache
-	DeviceProfiles() []models.DeviceProfile
+	RemoveNodeByName(name string) error
+	// AddProfile adds a new Profile to the Node Service and Core Metadata
+	// Returns new Profile id or non-nil error.
+	AddProfile(profile models.Profile) (string, error)
+	// Profiles return all managed Profiles from cache
+	Profiles() []models.Profile
 	// GetProfileByName returns the Profile by its name if it exists in the cache, or returns an error.
-	GetProfileByName(name string) (models.DeviceProfile, error)
-	// UpdateDeviceProfile updates the DeviceProfile in the cache and ensures that the
+	GetProfileByName(name string) (models.Profile, error)
+	// UpdateProfile updates the Profile in the cache and ensures that the
 	// copy in Core Metadata is also updated.
-	UpdateDeviceProfile(profile models.DeviceProfile) error
-	// RemoveDeviceProfileByName removes the specified DeviceProfile by name from the cache and ensures that the
+	UpdateProfile(profile models.Profile) error
+	// RemoveProfileByName removes the specified Profile by name from the cache and ensures that the
 	// instance in Core Metadata is also removed.
-	RemoveDeviceProfileByName(name string) error
+	RemoveProfileByName(name string) error
 	// AddProvisionWatcher adds a new Watcher to the cache and Core Metadata
 	// Returns new Watcher id or non-nil error.
 	AddProvisionWatcher(watcher models.ProvisionWatcher) (string, error)
@@ -77,35 +77,35 @@ type DeviceServiceSDK interface {
 	// RemoveProvisionWatcher removes the specified Watcher by name from the cache and ensures that the
 	// instance in Core Metadata is also removed.
 	RemoveProvisionWatcher(name string) error
-	// DeviceResource retrieves the specific DeviceResource instance from cache according to
-	// the Device name and Device Resource name
-	DeviceResource(deviceName string, deviceResource string) (models.DeviceResource, bool)
-	// DeviceCommand retrieves the specific DeviceCommand instance from cache according to
-	// the Device name and Command name
-	DeviceCommand(deviceName string, commandName string) (models.DeviceCommand, bool)
-	// AddDeviceAutoEvent adds a new AutoEvent to the Device with given name
-	AddDeviceAutoEvent(deviceName string, event models.AutoEvent) error
-	// RemoveDeviceAutoEvent removes an AutoEvent from the Device with given name
-	RemoveDeviceAutoEvent(deviceName string, event models.AutoEvent) error
-	// UpdateDeviceOperatingState updates the OperatingState for the Device with given name
+	// Resource retrieves the specific Resource instance from cache according to
+	// the Node name and Node Resource name
+	Resource(nodeName string, resource string) (models.Resource, bool)
+	// Command retrieves the specific Command instance from cache according to
+	// the Node name and Command name
+	Command(nodeName string, commandName string) (models.Command, bool)
+	// AddNodeAutoEvent adds a new AutoEvent to the Node with given name
+	AddNodeAutoEvent(nodeName string, event models.AutoEvent) error
+	// RemoveNodeAutoEvent removes an AutoEvent from the Node with given name
+	RemoveNodeAutoEvent(nodeName string, event models.AutoEvent) error
+	// UpdateNodeOperatingState updates the OperatingState for the Node with given name
 	// in Core Metadata
-	UpdateDeviceOperatingState(name string, state models.OperatingState) error
-	// DeviceExistsForName returns true if a device exists in cache with the specified name, otherwise it returns false.
-	DeviceExistsForName(name string) bool
-	// PatchDevice patches the specified device properties in Core Metadata. Device name is required
-	// to be provided in the UpdateDevice. Note that all properties of UpdateDevice are pointers
-	// and anything that is nil will not modify the device. In the case of Arrays and Maps, the whole new value
+	UpdateNodeOperatingState(name string, state models.OperatingState) error
+	// NodeExistsForName returns true if a node exists in cache with the specified name, otherwise it returns false.
+	NodeExistsForName(name string) bool
+	// PatchNode patches the specified node properties in Core Metadata. Node name is required
+	// to be provided in the UpdateNode. Note that all properties of UpdateNode are pointers
+	// and anything that is nil will not modify the node. In the case of Arrays and Maps, the whole new value
 	// must be sent, as it is applied as an overwrite operation.
-	PatchDevice(updateDevice dtos.UpdateDevice) error
+	PatchNode(updateNode dtos.UpdateNode) error
 
-	// Run starts this Device Service. This should not be called directly by a device service. Instead,
+	// Run starts this Node Service. This should not be called directly by a node service. Instead,
 	// call startup.Bootstrap(...)
 	Run() error
 
-	// Name returns the name of this Device Service
+	// Name returns the name of this Node Service
 	Name() string
 
-	// Version returns the version number of this Device Service
+	// Version returns the version number of this Node Service
 	Version() string
 
 	// AsyncReadingsEnabled returns a bool value to indicate whether the asynchronous reading is enabled.
@@ -114,16 +114,16 @@ type DeviceServiceSDK interface {
 	// AsyncValuesChannel returns a channel to allow developer send asynchronous reading back to SDK.
 	AsyncValuesChannel() chan *sdkModels.AsyncValues
 
-	// DiscoveredDeviceChannel returns a channel to allow developer send discovered devices back to SDK.
-	DiscoveredDeviceChannel() chan []sdkModels.DiscoveredDevice
+	// DiscoveredNodeChannel returns a channel to allow developer send discovered nodes back to SDK.
+	DiscoveredNodeChannel() chan []sdkModels.DiscoveredNode
 
-	// DeviceDiscoveryEnabled returns a bool value to indicate whether device discovery is enabled.
-	DeviceDiscoveryEnabled() bool
+	// NodeDiscoveryEnabled returns a bool value to indicate whether node discovery is enabled.
+	NodeDiscoveryEnabled() bool
 
 	// DriverConfigs retrieves the driver specific configuration
 	DriverConfigs() map[string]string
 
-	// AddCustomRoute allows leveraging the existing internal web server to add routes specific to Device Service.
+	// AddCustomRoute allows leveraging the existing internal web server to add routes specific to Node Service.
 	AddCustomRoute(route string, authentication Authentication, handler func(e echo.Context) error, methods ...string) error
 
 	// LoadCustomConfig uses the Config Processor from go-mod-bootstrap to attempt to load service's
@@ -146,8 +146,8 @@ type DeviceServiceSDK interface {
 	// github.com/rcrowley/go-metrics
 	MetricsManager() interfaces.MetricsManager
 
-	// PublishDeviceDiscoveryProgressSystemEvent publishes a device discovery progress system event through the EdgeX message bus
-	PublishDeviceDiscoveryProgressSystemEvent(progress, discoveredDeviceCount int, message string)
+	// PublishNodeDiscoveryProgressSystemEvent publishes a node discovery progress system event through the EdgeX message bus
+	PublishNodeDiscoveryProgressSystemEvent(progress, discoveredNodeCount int, message string)
 
 	// PublishProfileScanProgressSystemEvent publishes a profile scan progress system event through the EdgeX message bus.
 	PublishProfileScanProgressSystemEvent(reqId string, progress int, message string)
@@ -156,19 +156,19 @@ type DeviceServiceSDK interface {
 	PublishGenericSystemEvent(eventType, action string, details any)
 }
 
-// DeviceServiceSDKExt extends DeviceServiceSDK with additional methods that bypass device validation.
-type DeviceServiceSDKExt interface {
-	DeviceServiceSDK
-	// AddDeviceWithoutValidation adds a new Device to the Device Service and Core Metadata
-	// with bypassValidation=true to skip device validation.
-	// Returns new Device id or non-nil error.
-	AddDeviceWithoutValidation(device models.Device) (string, error)
-	// UpdateDeviceWithoutValidation updates the Device in Core Metadata with bypassValidation=true
-	// to skip device validation.
-	UpdateDeviceWithoutValidation(device models.Device) error
-	// PatchDeviceWithoutValidation patches the specified device properties in Core Metadata with bypassValidation=true
-	// to skip device validation. Device name is required to be provided in the UpdateDevice. Note that all properties
-	// of UpdateDevice are pointers and anything that is nil will not modify the device. In the case of Arrays and Maps,
+// NodeServiceSDKExt extends NodeServiceSDK with additional methods that bypass node validation.
+type NodeServiceSDKExt interface {
+	NodeServiceSDK
+	// AddNodeWithoutValidation adds a new Node to the Node Service and Core Metadata
+	// with bypassValidation=true to skip node validation.
+	// Returns new Node id or non-nil error.
+	AddNodeWithoutValidation(node models.Node) (string, error)
+	// UpdateNodeWithoutValidation updates the Node in Core Metadata with bypassValidation=true
+	// to skip node validation.
+	UpdateNodeWithoutValidation(node models.Node) error
+	// PatchNodeWithoutValidation patches the specified node properties in Core Metadata with bypassValidation=true
+	// to skip node validation. Node name is required to be provided in the UpdateNode. Note that all properties
+	// of UpdateNode are pointers and anything that is nil will not modify the node. In the case of Arrays and Maps,
 	// the whole new value must be sent, as it is applied as an overwrite operation.
-	PatchDeviceWithoutValidation(updateDevice dtos.UpdateDevice) error
+	PatchNodeWithoutValidation(updateNode dtos.UpdateNode) error
 }

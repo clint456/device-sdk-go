@@ -10,11 +10,11 @@ import (
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces"
 )
 
-// DeviceServiceName contains the name of device service struct in the DIC.
-var DeviceServiceName = di.TypeInstanceToName(models.DeviceService{})
+// NodeServiceName contains the name of node service struct in the DIC.
+var NodeServiceName = di.TypeInstanceToName(models.NodeService{})
 
 // ProtocolDriverName contains the name of protocol driver implementation in the DIC.
 var ProtocolDriverName = di.TypeInstanceToName((*interfaces.ProtocolDriver)(nil))
@@ -25,9 +25,9 @@ var AutoEventManagerName = di.TypeInstanceToName((*interfaces.AutoEventManager)(
 // ExtendedProtocolDriverName contains the name of extended protocol driver implementation in the DIC.
 var ExtendedProtocolDriverName = di.TypeInstanceToName((*interfaces.ExtendedProtocolDriver)(nil))
 
-// DeviceServiceFrom helper function queries the DIC and returns device service struct.
-func DeviceServiceFrom(get di.Get) *models.DeviceService {
-	return get(DeviceServiceName).(*models.DeviceService)
+// NodeServiceFrom helper function queries the DIC and returns node service struct.
+func NodeServiceFrom(get di.Get) *models.NodeService {
+	return get(NodeServiceName).(*models.NodeService)
 }
 
 // ProtocolDriverFrom helper function queries the DIC and returns protocol driver implementation.
@@ -64,7 +64,7 @@ func DiscoveryRequestIdFrom(get di.Get) string {
 // AllowedRequestFailuresTrackerName contains the name of allowed request failures tracker in the DIC.
 var AllowedRequestFailuresTrackerName = di.TypeInstanceToName(AllowedFailuresTracker{})
 
-// AllowedRequestFailuresTrackerFrom helper function queries the DIC and returns a device request failures tracker.
+// AllowedRequestFailuresTrackerFrom helper function queries the DIC and returns a node request failures tracker.
 func AllowedRequestFailuresTrackerFrom(get di.Get) AllowedFailuresTracker {
 	return get(AllowedRequestFailuresTrackerName).(AllowedFailuresTracker)
 }

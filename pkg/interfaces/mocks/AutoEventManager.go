@@ -9,8 +9,8 @@ type AutoEventManager struct {
 	mock.Mock
 }
 
-// RestartForDevice provides a mock function with given fields: name
-func (_m *AutoEventManager) RestartForDevice(name string) {
+// RestartForNode provides a mock function with given fields: name
+func (_m *AutoEventManager) RestartForNode(name string) {
 	_m.Called(name)
 }
 
@@ -19,8 +19,8 @@ func (_m *AutoEventManager) StartAutoEvents() {
 	_m.Called()
 }
 
-// StopForDevice provides a mock function with given fields: name
-func (_m *AutoEventManager) StopForDevice(name string) {
+// StopForNode provides a mock function with given fields: name
+func (_m *AutoEventManager) StopForNode(name string) {
 	_m.Called(name)
 }
 

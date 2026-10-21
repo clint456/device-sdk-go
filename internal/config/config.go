@@ -13,7 +13,7 @@ import (
 	bootstrapConfig "github.com/edgexfoundry/go-mod-bootstrap/v4/config"
 )
 
-// ConfigurationStruct contains the configuration properties for the device service.
+// ConfigurationStruct contains the configuration properties for the node service.
 type ConfigurationStruct struct {
 	// WritableInfo contains configuration settings that can be changed in the Registry .
 	Writable WritableInfo
@@ -21,17 +21,17 @@ type ConfigurationStruct struct {
 	Clients bootstrapConfig.ClientsCollection
 	// Registry contains registry-specific settings.
 	Registry bootstrapConfig.RegistryInfo
-	// Service contains DeviceService-specific settings.
+	// Service contains NodeService-specific settings.
 	Service bootstrapConfig.ServiceInfo
-	// Device contains device-specific configuration settings.
-	Device DeviceInfo
-	// Driver is a string map contains customized configuration for the protocol driver implemented based on Device SDK
+	// Node contains node-specific configuration settings.
+	Node NodeInfo
+	// Driver is a string map contains customized configuration for the protocol driver implemented based on Node SDK
 	Driver map[string]string
 	// MessageBus contains information for connecting to MessageBus which provides alternative way to publish event
 	MessageBus bootstrapConfig.MessageBusInfo
 	// MaxEventSize is the maximum event size that can be sent to MessageBus or CoreData
 	MaxEventSize int64
-	// MaxConcurrentCommands caps in-flight MQTT command requests so a slow/offline device
+	// MaxConcurrentCommands caps in-flight MQTT command requests so a slow/offline node
 	// cannot starve the consumer. Values <= 0 fall back to the built-in default (32).
 	MaxConcurrentCommands int
 }
@@ -43,15 +43,15 @@ func (c *ConfigurationStruct) UpdateFromRaw(rawConfig interface{}) bool {
 	if ok {
 		*c = *configuration
 	}
-	// Device labels are stored as a single string, so we need to convert it to a string slice.
+	// Node labels are stored as a single string, so we need to convert it to a string slice.
 	// The decision to do the conversion in sdk is based on the fact that we can only modify the logic inside the
 	// decoding function of the Keeper client. Unless we opt to develop a new decoder for Consul ourselves.
 	// See:
 	// Keeper client https://github.com/edgexfoundry/go-mod-configuration/blob/2c3512b731558a2be3f8460c3f0fed9361b5dcd4/internal/pkg/keeper/client.go#L163
 	// Consul client https://github.com/edgexfoundry/go-mod-configuration/blob/2c3512b731558a2be3f8460c3f0fed9361b5dcd4/internal/pkg/consul/client.go#L206
-	if len(c.Device.Labels) == 1 && strings.HasPrefix(c.Device.Labels[0], "[") &&
-		strings.HasSuffix(c.Device.Labels[0], "]") {
-		c.Device.Labels = strings.Fields(strings.Trim(c.Device.Labels[0], "[]"))
+	if len(c.Node.Labels) == 1 && strings.HasPrefix(c.Node.Labels[0], "[") &&
+		strings.HasSuffix(c.Node.Labels[0], "]") {
+		c.Node.Labels = strings.Fields(strings.Trim(c.Node.Labels[0], "[]"))
 	}
 	return ok
 }

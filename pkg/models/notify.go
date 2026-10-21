@@ -10,7 +10,7 @@ type Progress struct {
 	Progress  int    `json:"progress"`
 	Message   string `json:"message,omitempty"`
 }
-type DeviceDiscoveryProgress struct {
-	Progress              `json:",inline"`
-	DiscoveredDeviceCount int `json:"discoveredDeviceCount,omitempty"`
+type NodeDiscoveryProgress struct {
+	Progress            `json:",inline"`
+	DiscoveredNodeCount int `json:"discoveredNodeCount,omitempty"`
 }

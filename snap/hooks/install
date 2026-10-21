@@ -9,12 +9,12 @@ SNAP_CURRENT=${SNAP/%$SNAP_REVISION/current}
 # install all the config files from $SNAP/config/SERVICE/res/configuration.yaml
 # into $SNAP_DATA/config
 mkdir -p "$SNAP_DATA/config"
-if [ ! -f "$SNAP_DATA/config/device-simple/res/configuration.yaml" ]; then
-    mkdir -p "$SNAP_DATA/config/device-simple/res"
-    cp "$SNAP/config/device-simple/res/configuration.yaml" "$SNAP_DATA/config/device-simple/res/configuration.yaml"
+if [ ! -f "$SNAP_DATA/config/node-simple/res/configuration.yaml" ]; then
+    mkdir -p "$SNAP_DATA/config/node-simple/res"
+    cp "$SNAP/config/node-simple/res/configuration.yaml" "$SNAP_DATA/config/node-simple/res/configuration.yaml"
     # do replacement of the $SNAP, $SNAP_DATA, $SNAP_COMMON environment variables in the config files
     sed -i -e "s@\$SNAP_COMMON@$SNAP_COMMON@g" \
         -e "s@\$SNAP_DATA@$SNAP_DATA_CURRENT@g" \
         -e "s@\$SNAP@$SNAP_CURRENT@g" \
-        "$SNAP_DATA/config/device-simple/res/configuration.yaml"
+        "$SNAP_DATA/config/node-simple/res/configuration.yaml"
 fi

@@ -25,64 +25,64 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces/mocks"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces/mocks"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 )
 
 const (
-	TestDevice         = "testDevice"
-	TestDeviceService  = "testDeviceService"
-	TestProfile        = "testProfile"
-	TestDeviceResource = "testResource"
-	TestDeviceCommand  = "testCommand"
-	TestValue          = "testValue"
-	TestUnits          = "testUnits"
+	TestNode        = "testNode"
+	TestNodeService = "testNodeService"
+	TestProfile     = "testProfile"
+	TestResource    = "testResource"
+	TestCommand     = "testCommand"
+	TestValue       = "testValue"
+	TestUnits       = "testUnits"
 )
 
 var TestProtocols map[string]dtos.ProtocolProperties
 
 func NewMockDIC() *di.Container {
 	cr := sdkModels.CommandRequest{
-		DeviceResourceName: TestDeviceResource,
-		Attributes:         nil,
-		Type:               common.ValueTypeString,
+		ResourceName: TestResource,
+		Attributes:   nil,
+		Type:         common.ValueTypeString,
 	}
 	cv := &sdkModels.CommandValue{
-		DeviceResourceName: TestDeviceResource,
-		Type:               common.ValueTypeString,
-		Value:              TestValue,
-		Tags:               make(map[string]string),
+		ResourceName: TestResource,
+		Type:         common.ValueTypeString,
+		Value:        TestValue,
+		Tags:         make(map[string]string),
 	}
 	driverMock := &mocks.ProtocolDriver{}
-	driverMock.On("HandleReadCommands", TestDevice, TestProtocols, []sdkModels.CommandRequest{cr}).Return(nil, nil)
-	driverMock.On("HandleWriteCommands", TestDevice, TestProtocols, []sdkModels.CommandRequest{cr}, []*sdkModels.CommandValue{cv}).Return(nil)
+	driverMock.On("HandleReadCommands", TestNode, TestProtocols, []sdkModels.CommandRequest{cr}).Return(nil, nil)
+	driverMock.On("HandleWriteCommands", TestNode, TestProtocols, []sdkModels.CommandRequest{cr}, []*sdkModels.CommandValue{cv}).Return(nil)
 
-	devices := responses.MultiDevicesResponse{
+	nodes := responses.MultiNodesResponse{
 		BaseWithTotalCountResponse: dtoCommon.BaseWithTotalCountResponse{},
-		Devices: []dtos.Device{
+		Nodes: []dtos.Node{
 			{
-				Name:           TestDevice,
+				Name:           TestNode,
 				AdminState:     models.Unlocked,
 				OperatingState: models.Up,
 				Protocols:      TestProtocols,
-				ServiceName:    TestDeviceService,
+				ServiceName:    TestNodeService,
 				ProfileName:    TestProfile,
 			},
 		},
 	}
-	dcMock := &clientMocks.DeviceClient{}
-	dcMock.On("DevicesByServiceName", context.Background(), TestDeviceService, 0, -1).Return(devices, nil)
+	dcMock := &clientMocks.NodeClient{}
+	dcMock.On("NodesByServiceName", context.Background(), TestNodeService, 0, -1).Return(nodes, nil)
 
-	profile := responses.DeviceProfileResponse{
+	profile := responses.ProfileResponse{
 		BaseResponse: dtoCommon.BaseResponse{},
-		Profile: dtos.DeviceProfile{
-			DeviceProfileBasicInfo: dtos.DeviceProfileBasicInfo{Name: TestProfile},
-			DeviceResources: []dtos.DeviceResource{
+		Profile: dtos.Profile{
+			ProfileBasicInfo: dtos.ProfileBasicInfo{Name: TestProfile},
+			Resources: []dtos.Resource{
 				{
-					Name: TestDeviceResource,
+					Name: TestResource,
 					Properties: dtos.ResourceProperties{
 						ValueType:    common.ValueTypeString,
 						ReadWrite:    common.ReadWrite_RW,
@@ -91,24 +91,24 @@ func NewMockDIC() *di.Container {
 					},
 				},
 			},
-			DeviceCommands: []dtos.DeviceCommand{
+			Commands: []dtos.Command{
 				{
-					Name:               TestDeviceCommand,
+					Name:               TestCommand,
 					IsHidden:           false,
 					ReadWrite:          common.ReadWrite_RW,
-					ResourceOperations: []dtos.ResourceOperation{{DeviceResource: TestDeviceResource}},
+					ResourceOperations: []dtos.ResourceOperation{{Resource: TestResource}},
 				},
 			},
 		},
 	}
-	dpcMock := &clientMocks.DeviceProfileClient{}
-	dpcMock.On("DeviceProfileByName", context.Background(), TestProfile).Return(profile, nil)
+	dpcMock := &clientMocks.ProfileClient{}
+	dpcMock.On("ProfileByName", context.Background(), TestProfile).Return(profile, nil)
 
 	pwcMock := &clientMocks.ProvisionWatcherClient{}
-	pwcMock.On("ProvisionWatchersByServiceName", context.Background(), TestDeviceService, 0, -1).Return(responses.MultiProvisionWatchersResponse{}, nil)
+	pwcMock.On("ProvisionWatchersByServiceName", context.Background(), TestNodeService, 0, -1).Return(responses.MultiProvisionWatchersResponse{}, nil)
 
 	configuration := &config.ConfigurationStruct{
-		Device: config.DeviceInfo{MaxCmdOps: 1},
+		Node: config.NodeInfo{MaxCmdOps: 1},
 	}
 
 	mockMetricsManager := &bootstrapMocks.MetricsManager{}
@@ -122,10 +122,10 @@ func NewMockDIC() *di.Container {
 		container.ProtocolDriverName: func(get di.Get) interface{} {
 			return driverMock
 		},
-		bootstrapContainer.DeviceClientName: func(get di.Get) interface{} {
+		bootstrapContainer.NodeClientName: func(get di.Get) interface{} {
 			return dcMock
 		},
-		bootstrapContainer.DeviceProfileClientName: func(get di.Get) interface{} {
+		bootstrapContainer.ProfileClientName: func(get di.Get) interface{} {
 			return dpcMock
 		},
 		bootstrapContainer.ProvisionWatcherClientName: func(get di.Get) interface{} {
@@ -153,10 +153,10 @@ func Test_getUniqueOrigin(t *testing.T) {
 
 func TestCommandValuesToEventDTO_ReadingUnits(t *testing.T) {
 	dic := NewMockDIC()
-	err := cache.InitCache(TestDeviceService, TestDeviceService, dic)
+	err := cache.InitCache(TestNodeService, TestNodeService, dic)
 	require.NoError(t, err)
 
-	stringCommandValue, e := sdkModels.NewCommandValue(TestDeviceResource, common.ValueTypeString, TestValue)
+	stringCommandValue, e := sdkModels.NewCommandValue(TestResource, common.ValueTypeString, TestValue)
 	require.NoError(t, e)
 
 	tests := []struct {
@@ -177,13 +177,13 @@ func TestCommandValuesToEventDTO_ReadingUnits(t *testing.T) {
 					return configuration
 				},
 			})
-			event, err := CommandValuesToEventDTO(testCase.CommandValues, TestDevice, TestDeviceCommand, configuration.Device.DataTransform, dic)
+			event, err := CommandValuesToEventDTO(testCase.CommandValues, TestNode, TestCommand, configuration.Node.DataTransform, dic)
 			require.NoError(t, err)
 
-			assert.Equal(t, TestDevice, event.DeviceName)
+			assert.Equal(t, TestNode, event.NodeName)
 			assert.Equal(t, TestProfile, event.ProfileName)
-			assert.Equal(t, TestDeviceCommand, event.SourceName)
-			assert.Equal(t, TestDeviceResource, event.Readings[0].ResourceName)
+			assert.Equal(t, TestCommand, event.SourceName)
+			assert.Equal(t, TestResource, event.Readings[0].ResourceName)
 			if testCase.ReadingUnits {
 				assert.NotEmpty(t, event.Readings[0].Units, "units is not presented")
 				assert.Equal(t, TestUnits, event.Readings[0].Units)
@@ -196,7 +196,7 @@ func TestCommandValuesToEventDTO_ReadingUnits(t *testing.T) {
 
 func TestCommandValuesToEventDTO_ReadingNilValue(t *testing.T) {
 	dic := NewMockDIC()
-	err := cache.InitCache(TestDeviceService, TestDeviceService, dic)
+	err := cache.InitCache(TestNodeService, TestNodeService, dic)
 	require.NoError(t, err)
 	cvs := []*sdkModels.CommandValue{
 		testCommandNilValue(t, common.ValueTypeBool),
@@ -227,21 +227,21 @@ func TestCommandValuesToEventDTO_ReadingNilValue(t *testing.T) {
 		testCommandNilValue(t, common.ValueTypeObject),
 		testCommandNilValue(t, common.ValueTypeObjectArray),
 	}
-	event, err := CommandValuesToEventDTO(cvs, TestDevice, TestDeviceCommand, true, dic)
+	event, err := CommandValuesToEventDTO(cvs, TestNode, TestCommand, true, dic)
 	require.NoError(t, err)
 
 	for _, r := range event.Readings {
 		assert.Empty(t, r.Value)
 		assert.Empty(t, r.BinaryValue)
 		assert.Empty(t, r.ObjectValue)
-		expectedNullReading := dtos.NewNullReading(TestProfile, TestDevice, TestDeviceResource, r.ValueType)
+		expectedNullReading := dtos.NewNullReading(TestProfile, TestNode, TestResource, r.ValueType)
 		expectedNullReading.Id = r.Id
 		expectedNullReading.Origin = r.Origin
 		assert.Equal(t, expectedNullReading, r)
 	}
 }
 func testCommandNilValue(t *testing.T, valueType string) *sdkModels.CommandValue {
-	cv, e := sdkModels.NewCommandValue(TestDeviceResource, valueType, nil)
+	cv, e := sdkModels.NewCommandValue(TestResource, valueType, nil)
 	require.NoError(t, e)
 	return cv
 }

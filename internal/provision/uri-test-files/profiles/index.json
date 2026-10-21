@@ -1,4 +1,4 @@
 {
-  "Simple-Device": "Simple-Driver.yaml",
-  "Simple-Device2": "Simple-Driver2.yml"
+  "Simple-Node": "Simple-Driver.yaml",
+  "Simple-Node2": "Simple-Driver2.yml"
 }

@@ -10,8 +10,8 @@ package common
 import (
 	"context"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	bootstrapInterfaces "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/interfaces"
@@ -29,7 +29,7 @@ import (
 const (
 	eventsSentName             = "EventsSent"
 	readingsSentName           = "ReadingsSent"
-	DeviceServiceEventPrefix   = "device"
+	NodeServiceEventPrefix     = "node"
 	BypassValidationQueryParam = "bypassValidation"
 )
 
@@ -37,16 +37,16 @@ const (
 var eventsSent gometrics.Counter
 var readingsSent gometrics.Counter
 
-func UpdateOperatingState(name string, state string, lc logger.LoggingClient, dc interfaces.DeviceClient) {
-	device := dtos.UpdateDevice{
+func UpdateOperatingState(name string, state string, lc logger.LoggingClient, dc interfaces.NodeClient) {
+	node := dtos.UpdateNode{
 		Name:           &name,
 		OperatingState: &state,
 	}
 
-	req := requests.NewUpdateDeviceRequest(device)
-	_, err := dc.UpdateWithQueryParams(context.Background(), []requests.UpdateDeviceRequest{req}, map[string]string{BypassValidationQueryParam: common.ValueTrue})
+	req := requests.NewUpdateNodeRequest(node)
+	_, err := dc.UpdateWithQueryParams(context.Background(), []requests.UpdateNodeRequest{req}, map[string]string{BypassValidationQueryParam: common.ValueTrue})
 	if err != nil {
-		lc.Errorf("failed to update OperatingState for Device %s in Core Metadata: %v", name, err)
+		lc.Errorf("failed to update OperatingState for Node %s in Core Metadata: %v", name, err)
 	}
 }
 
@@ -61,17 +61,17 @@ func SendEvent(event *dtos.Event, correlationID string, dic *di.Container) {
 
 	sent := false
 	mc := bootstrapContainer.MessagingClientFrom(dic.Get)
-	serviceName := container.DeviceServiceFrom(dic.Get).Name
+	serviceName := container.NodeServiceFrom(dic.Get).Name
 	publishTopic := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
-		SetPath(configuration.MessageBus.GetBaseTopicPrefix()).SetPath(common.EventsPublishTopic).SetPath(DeviceServiceEventPrefix).
-		SetNameFieldPath(serviceName).SetNameFieldPath(event.ProfileName).SetNameFieldPath(event.DeviceName).SetNameFieldPath(event.SourceName).BuildPath()
+		SetPath(configuration.MessageBus.GetBaseTopicPrefix()).SetPath(common.EventsPublishTopic).SetPath(NodeServiceEventPrefix).
+		SetNameFieldPath(serviceName).SetNameFieldPath(event.ProfileName).SetNameFieldPath(event.NodeName).SetNameFieldPath(event.SourceName).BuildPath()
 	err := mc.PublishWithSizeLimit(envelope, publishTopic, configuration.MaxEventSize)
 	if err != nil {
 		lc.Errorf("Failed to publish event to MessageBus: %s", err)
 		return
 	}
-	lc.Debugf("Event(profileName: %s, deviceName: %s, sourceName: %s, id: %s) published to MessageBus on topic: %s",
-		event.ProfileName, event.DeviceName, event.SourceName, event.Id, publishTopic)
+	lc.Debugf("Event(profileName: %s, nodeName: %s, sourceName: %s, id: %s) published to MessageBus on topic: %s",
+		event.ProfileName, event.NodeName, event.SourceName, event.Id, publishTopic)
 	sent = true
 
 	if sent && eventsSent != nil && readingsSent != nil {
@@ -106,22 +106,22 @@ func AddEventTags(event *dtos.Event) {
 	if event.Tags == nil {
 		event.Tags = make(map[string]interface{})
 	}
-	cmd, cmdExist := cache.Profiles().DeviceCommand(event.ProfileName, event.SourceName)
+	cmd, cmdExist := cache.Profiles().Command(event.ProfileName, event.SourceName)
 	if cmdExist && len(cmd.Tags) > 0 {
 		for k, v := range cmd.Tags {
 			event.Tags[k] = v
 		}
 	}
-	device, deviceExist := cache.Devices().ForName(event.DeviceName)
-	if deviceExist && len(device.Tags) > 0 {
-		for k, v := range device.Tags {
+	node, nodeExist := cache.Nodes().ForName(event.NodeName)
+	if nodeExist && len(node.Tags) > 0 {
+		for k, v := range node.Tags {
 			event.Tags[k] = v
 		}
 	}
 }
 
 func AddReadingTags(reading *dtos.BaseReading) {
-	dr, drExist := cache.Profiles().DeviceResource(reading.ProfileName, reading.ResourceName)
+	dr, drExist := cache.Profiles().Resource(reading.ProfileName, reading.ResourceName)
 	if drExist && len(dr.Tags) > 0 {
 		if reading.Tags == nil {
 			reading.Tags = make(map[string]interface{})

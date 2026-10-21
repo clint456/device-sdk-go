@@ -22,7 +22,7 @@ import (
 
 // This file contains example of custom configuration that can be loaded from the service's configuration.yaml
 // and/or the Configuration Provider, aka Consul (if enabled).
-// For more details see https://docs.edgexfoundry.org/2.0/microservices/device/Ch-DeviceServices/#custom-configuration
+// For more details see https://docs.edgexfoundry.org/2.0/microservices/node/Ch-NodeServices/#custom-configuration
 
 // Example structured custom configuration types. Must be wrapped with an outer struct with
 // single element that matches the top level custom configuration element in your configuration.yaml file,

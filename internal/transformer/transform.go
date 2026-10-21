@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
@@ -27,8 +27,8 @@ var (
 	originMutex    sync.Mutex
 )
 
-func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sourceName string, dataTransform bool, dic *di.Container) (*dtos.Event, errors.EdgeX) {
-	// in some case device service driver implementation would generate no readings
+func CommandValuesToEventDTO(cvs []*models.CommandValue, nodeName string, sourceName string, dataTransform bool, dic *di.Container) (*dtos.Event, errors.EdgeX) {
+	// in some case node service driver implementation would generate no readings
 	// in this case no event would be created. Based on the implementation there would be 2 scenarios:
 	// 1. uninitialized *CommandValue slices, i.e. nil
 	// 2. initialized *CommandValue slice with no value in it.
@@ -36,9 +36,9 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 		return nil, nil
 	}
 
-	device, exist := cache.Devices().ForName(deviceName)
+	node, exist := cache.Nodes().ForName(nodeName)
 	if !exist {
-		errMsg := fmt.Sprintf("failed to find device %s", deviceName)
+		errMsg := fmt.Sprintf("failed to find node %s", nodeName)
 		return nil, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 	}
 
@@ -51,10 +51,10 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 		if cv == nil {
 			continue
 		}
-		// double-check the CommandValue return from ProtocolDriver match device command
-		dr, ok := cache.Profiles().DeviceResource(device.ProfileName, cv.DeviceResourceName)
+		// double-check the CommandValue return from ProtocolDriver match node command
+		dr, ok := cache.Profiles().Resource(node.ProfileName, cv.ResourceName)
 		if !ok {
-			msg := fmt.Sprintf("failed to find DeviceResource %s in Device %s for CommandValue (%s)", cv.DeviceResourceName, deviceName, cv.String())
+			msg := fmt.Sprintf("failed to find Resource %s in Node %s for CommandValue (%s)", cv.ResourceName, nodeName, cv.String())
 			lc.Error(msg)
 			return nil, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, msg, nil)
 		}
@@ -67,12 +67,12 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 
 				var err error
 				if errors.Kind(edgexErr) == errors.KindOverflowError {
-					cv, err = models.NewCommandValue(cv.DeviceResourceName, common.ValueTypeString, Overflow)
+					cv, err = models.NewCommandValue(cv.ResourceName, common.ValueTypeString, Overflow)
 					if err != nil {
 						return nil, errors.NewCommonEdgeXWrapper(err)
 					}
 				} else if errors.Kind(edgexErr) == errors.KindNaNError {
-					cv, err = models.NewCommandValue(cv.DeviceResourceName, common.ValueTypeString, NaN)
+					cv, err = models.NewCommandValue(cv.ResourceName, common.ValueTypeString, NaN)
 					if err != nil {
 						return nil, errors.NewCommonEdgeXWrapper(err)
 					}
@@ -83,8 +83,8 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 		}
 
 		// assertion
-		dc := bootstrapContainer.DeviceClientFrom(dic.Get)
-		err := checkAssertion(cv, dr.Properties.Assertion, device.Name, lc, dc)
+		dc := bootstrapContainer.NodeClientFrom(dic.Get)
+		err := checkAssertion(cv, dr.Properties.Assertion, node.Name, lc, dc)
 		if err != nil {
 			return nil, errors.NewCommonEdgeXWrapper(err)
 		}
@@ -94,9 +94,9 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 		}
 
 		// ResourceOperation mapping
-		ro, err := cache.Profiles().ResourceOperation(device.ProfileName, cv.DeviceResourceName)
+		ro, err := cache.Profiles().ResourceOperation(node.ProfileName, cv.ResourceName)
 		if err != nil {
-			// this allows SDK to directly read deviceResource without deviceCommands defined.
+			// this allows SDK to directly read resource without commands defined.
 			lc.Debugf("failed to read ResourceOperation: %v", err)
 		} else if len(ro.Mappings) > 0 {
 			newCV, ok := mapCommandValue(cv, ro.Mappings)
@@ -105,7 +105,7 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 			}
 		}
 
-		reading, err := commandValueToReading(cv, device.Name, device.ProfileName, dr.Properties.MediaType, origin)
+		reading, err := commandValueToReading(cv, node.Name, node.ProfileName, dr.Properties.MediaType, origin)
 		if err != nil {
 			return nil, errors.NewCommonEdgeXWrapper(err)
 		}
@@ -118,18 +118,18 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 		readings = append(readings, reading)
 
 		if cv.Type == common.ValueTypeBinary {
-			lc.Debugf("device: %s DeviceResource: %v reading: binary value", device.Name, cv.DeviceResourceName)
+			lc.Debugf("node: %s Resource: %v reading: binary value", node.Name, cv.ResourceName)
 		} else {
-			lc.Debugf("device: %s DeviceResource: %v reading: %+v", device.Name, cv.DeviceResourceName, reading)
+			lc.Debugf("node: %s Resource: %v reading: %+v", node.Name, cv.ResourceName, reading)
 		}
 	}
 
 	if !transformsOK {
-		return nil, errors.NewCommonEdgeX(errors.KindServerError, fmt.Sprintf("failed to transform value for %s", deviceName), nil)
+		return nil, errors.NewCommonEdgeX(errors.KindServerError, fmt.Sprintf("failed to transform value for %s", nodeName), nil)
 	}
 
 	if len(readings) > 0 {
-		eventDTO := dtos.NewEvent(device.ProfileName, device.Name, sourceName)
+		eventDTO := dtos.NewEvent(node.ProfileName, node.Name, sourceName)
 		eventDTO.Readings = readings
 		eventDTO.Origin = origin
 		eventDTO.Tags = tags
@@ -141,25 +141,25 @@ func CommandValuesToEventDTO(cvs []*models.CommandValue, deviceName string, sour
 	}
 }
 
-func commandValueToReading(cv *models.CommandValue, deviceName, profileName, mediaType string, eventOrigin int64) (dtos.BaseReading, errors.EdgeX) {
+func commandValueToReading(cv *models.CommandValue, nodeName, profileName, mediaType string, eventOrigin int64) (dtos.BaseReading, errors.EdgeX) {
 	var err error
 	var reading dtos.BaseReading
 
 	if cv.Value == nil {
-		reading = dtos.NewNullReading(profileName, deviceName, cv.DeviceResourceName, cv.Type)
+		reading = dtos.NewNullReading(profileName, nodeName, cv.ResourceName, cv.Type)
 	} else if cv.Type == common.ValueTypeBinary {
 		var binary []byte
 		binary, err = cv.BinaryValue()
 		if err != nil {
 			return reading, errors.NewCommonEdgeXWrapper(err)
 		}
-		reading = dtos.NewBinaryReading(profileName, deviceName, cv.DeviceResourceName, binary, mediaType)
+		reading = dtos.NewBinaryReading(profileName, nodeName, cv.ResourceName, binary, mediaType)
 	} else if cv.Type == common.ValueTypeObject {
-		reading = dtos.NewObjectReading(profileName, deviceName, cv.DeviceResourceName, cv.Value)
+		reading = dtos.NewObjectReading(profileName, nodeName, cv.ResourceName, cv.Value)
 	} else if cv.Type == common.ValueTypeObjectArray {
-		reading = dtos.NewObjectReadingWithArray(profileName, deviceName, cv.DeviceResourceName, cv.Value)
+		reading = dtos.NewObjectReadingWithArray(profileName, nodeName, cv.ResourceName, cv.Value)
 	} else {
-		reading, err = dtos.NewSimpleReading(profileName, deviceName, cv.DeviceResourceName, cv.Type, cv.Value)
+		reading, err = dtos.NewSimpleReading(profileName, nodeName, cv.ResourceName, cv.Type, cv.Value)
 		if err != nil {
 			return reading, errors.NewCommonEdgeX(errors.KindServerError, fmt.Sprintf("failed to transform CommandValue (%s) to Reading", cv.String()), err)
 		}

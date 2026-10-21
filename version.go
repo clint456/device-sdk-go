@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package device
+package node
 
-// Global version for device-sdk-go
+// Global version for south-sdk-go
 var Version string = "to be replaced by makefile"

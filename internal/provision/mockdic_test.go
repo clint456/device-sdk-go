@@ -8,8 +8,6 @@ package provision
 
 import (
 	"context"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	bootstrapMocks "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/interfaces/mocks"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
@@ -18,86 +16,88 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/responses"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 	"github.com/stretchr/testify/mock"
 )
 
 const (
-	TestDeviceService             = "testDeviceService"
-	TestDeviceWithTags            = "testDeviceWithTags"
-	TestDeviceWithoutTags         = "testDeviceWithoutTags"
-	TestProfile                   = "testProfile"
-	TestDeviceResourceWithTags    = "testResourceWithTags"
-	TestDeviceResourceWithoutTags = "testResourceWithoutTags"
-	TestDeviceCommandWithTags     = "testCommandWithTags"
-	TestDeviceCommandWithoutTags  = "testCommandWithoutTags"
-	TestResourceTagName           = "testResourceTagName"
-	TestResourceTagValue          = "testResourceTagValue"
-	TestCommandTagName            = "testCommandTagName"
-	TestCommandTagValue           = "testCommandTagValue"
-	TestDeviceTagName             = "testDeviceTagName"
-	TestDeviceTagValue            = "testDeviceTagValue"
-	TestDuplicateTagName          = "testDuplicateTagName"
+	TestNodeService         = "testNodeService"
+	TestNodeWithTags        = "testNodeWithTags"
+	TestNodeWithoutTags     = "testNodeWithoutTags"
+	TestProfile             = "testProfile"
+	TestResourceWithTags    = "testResourceWithTags"
+	TestResourceWithoutTags = "testResourceWithoutTags"
+	TestCommandWithTags     = "testCommandWithTags"
+	TestCommandWithoutTags  = "testCommandWithoutTags"
+	TestResourceTagName     = "testResourceTagName"
+	TestResourceTagValue    = "testResourceTagValue"
+	TestCommandTagName      = "testCommandTagName"
+	TestCommandTagValue     = "testCommandTagValue"
+	TestNodeTagName         = "testNodeTagName"
+	TestNodeTagValue        = "testNodeTagValue"
+	TestDuplicateTagName    = "testDuplicateTagName"
 )
 
-var profile = responses.DeviceProfileResponse{
-	Profile: dtos.DeviceProfile{
-		DeviceProfileBasicInfo: dtos.DeviceProfileBasicInfo{Name: TestProfile},
-		DeviceResources: []dtos.DeviceResource{
+var profile = responses.ProfileResponse{
+	Profile: dtos.Profile{
+		ProfileBasicInfo: dtos.ProfileBasicInfo{Name: TestProfile},
+		Resources: []dtos.Resource{
 			{
-				Name: TestDeviceResourceWithTags,
+				Name: TestResourceWithTags,
 				Tags: dtos.Tags{
 					TestResourceTagName: TestResourceTagValue,
 				},
 			},
 			{
-				Name: TestDeviceResourceWithoutTags,
+				Name: TestResourceWithoutTags,
 			},
 		},
-		DeviceCommands: []dtos.DeviceCommand{
+		Commands: []dtos.Command{
 			{
-				Name: TestDeviceCommandWithTags,
+				Name: TestCommandWithTags,
 				Tags: dtos.Tags{
 					TestCommandTagName:   TestCommandTagValue,
 					TestDuplicateTagName: TestCommandTagValue,
 				},
 			},
 			{
-				Name: TestDeviceCommandWithoutTags,
+				Name: TestCommandWithoutTags,
 			},
 		},
 	},
 }
 
-func NewMockDIC() (*di.Container, *clientMocks.DeviceProfileClient) {
+func NewMockDIC() (*di.Container, *clientMocks.ProfileClient) {
 	configuration := &config.ConfigurationStruct{
-		Device: config.DeviceInfo{MaxCmdOps: 1},
+		Node: config.NodeInfo{MaxCmdOps: 1},
 	}
-	deviceService := &models.DeviceService{Name: TestDeviceService}
+	nodeService := &models.NodeService{Name: TestNodeService}
 
-	devices := responses.MultiDevicesResponse{
-		Devices: []dtos.Device{
+	nodes := responses.MultiNodesResponse{
+		Nodes: []dtos.Node{
 			{
-				Name:        TestDeviceWithTags,
+				Name:        TestNodeWithTags,
 				ProfileName: TestProfile,
 				Tags: dtos.Tags{
-					TestDeviceTagName:    TestDeviceTagValue,
-					TestDuplicateTagName: TestDeviceTagValue,
+					TestNodeTagName:      TestNodeTagValue,
+					TestDuplicateTagName: TestNodeTagValue,
 				},
 			},
 			{
-				Name:        TestDeviceWithoutTags,
+				Name:        TestNodeWithoutTags,
 				ProfileName: TestProfile,
 			},
 		},
 	}
-	dcMock := &clientMocks.DeviceClient{}
-	dcMock.On("DevicesByServiceName", context.Background(), TestDeviceService, 0, -1).Return(devices, nil)
+	dcMock := &clientMocks.NodeClient{}
+	dcMock.On("NodesByServiceName", context.Background(), TestNodeService, 0, -1).Return(nodes, nil)
 
-	dpcMock := &clientMocks.DeviceProfileClient{}
-	dpcMock.On("DeviceProfileByName", context.Background(), TestProfile).Return(profile, nil)
+	dpcMock := &clientMocks.ProfileClient{}
+	dpcMock.On("ProfileByName", context.Background(), TestProfile).Return(profile, nil)
 
 	pwcMock := &clientMocks.ProvisionWatcherClient{}
-	pwcMock.On("ProvisionWatchersByServiceName", context.Background(), TestDeviceService, 0, -1).Return(responses.MultiProvisionWatchersResponse{}, nil)
+	pwcMock.On("ProvisionWatchersByServiceName", context.Background(), TestNodeService, 0, -1).Return(responses.MultiProvisionWatchersResponse{}, nil)
 
 	mockMetricsManager := &bootstrapMocks.MetricsManager{}
 	mockMetricsManager.On("Register", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -107,16 +107,16 @@ func NewMockDIC() (*di.Container, *clientMocks.DeviceProfileClient) {
 		container.ConfigurationName: func(get di.Get) interface{} {
 			return configuration
 		},
-		container.DeviceServiceName: func(get di.Get) any {
-			return deviceService
+		container.NodeServiceName: func(get di.Get) any {
+			return nodeService
 		},
 		bootstrapContainer.LoggingClientInterfaceName: func(get di.Get) interface{} {
 			return logger.NewMockClient()
 		},
-		bootstrapContainer.DeviceClientName: func(get di.Get) interface{} {
+		bootstrapContainer.NodeClientName: func(get di.Get) interface{} {
 			return dcMock
 		},
-		bootstrapContainer.DeviceProfileClientName: func(get di.Get) interface{} {
+		bootstrapContainer.ProfileClientName: func(get di.Get) interface{} {
 			return dpcMock
 		},
 		bootstrapContainer.ProvisionWatcherClientName: func(get di.Get) interface{} {

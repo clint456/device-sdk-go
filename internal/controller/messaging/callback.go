@@ -18,20 +18,20 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/application"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/application"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 )
 
 func MetadataSystemEventsCallback(ctx context.Context, serviceBaseName string, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	configuration := container.ConfigurationFrom(dic.Get)
 	messageBusInfo := container.ConfigurationFrom(dic.Get).MessageBus
-	deviceService := container.DeviceServiceFrom(dic.Get)
+	nodeService := container.NodeServiceFrom(dic.Get)
 	metadataSystemEventTopic := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
-		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetPath(common.MetadataSystemEventSubscribeTopic).SetNameFieldPath(deviceService.Name).SetPath("#").BuildPath()
+		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetPath(common.MetadataSystemEventSubscribeTopic).SetNameFieldPath(nodeService.Name).SetPath("#").BuildPath()
 	profileDeleteSystemEventTopic := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
 		SetPath(messageBusInfo.GetBaseTopicPrefix()).
-		SetPath(strings.Replace(common.MetadataSystemEventSubscribeTopic, "+/+", common.DeviceProfileSystemEventType+"/"+common.SystemEventActionDelete, 1)).
+		SetPath(strings.Replace(common.MetadataSystemEventSubscribeTopic, "+/+", common.ProfileSystemEventType+"/"+common.SystemEventActionDelete, 1)).
 		SetPath("#").BuildPath()
 	lc.Infof("Subscribing to System Events on topics: %s and %s", metadataSystemEventTopic, profileDeleteSystemEventTopic)
 
@@ -49,10 +49,10 @@ func MetadataSystemEventsCallback(ctx context.Context, serviceBaseName string, d
 	}
 
 	// Must subscribe to provision watcher System Events separately when the service has an instance name. i.e. -i flag was used.
-	// This is because Provision Watchers apply to all instances of the device service, i.e. the service base name (without the instance portion).
-	// The above subscribe topic is for the specific instance name which is appropriate for Devices, Profiles and Devices service System Events
+	// This is because Provision Watchers apply to all instances of the node service, i.e. the service base name (without the instance portion).
+	// The above subscribe topic is for the specific instance name which is appropriate for Nodes, Profiles and Nodes service System Events
 	// and when the -i flag is not used.
-	if serviceBaseName != deviceService.Name {
+	if serviceBaseName != nodeService.Name {
 		// Must replace the first wildcard with the type for Provision Watchers
 		baseSubscribeTopic := strings.Replace(common.MetadataSystemEventSubscribeTopic, "+", common.ProvisionWatcherSystemEventType, 1)
 		provisionWatcherSystemEventSubscribeTopic := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
@@ -90,10 +90,10 @@ func MetadataSystemEventsCallback(ctx context.Context, serviceBaseName string, d
 					continue
 				}
 
-				serviceName := container.DeviceServiceFrom(dic.Get).Name
+				serviceName := container.NodeServiceFrom(dic.Get).Name
 				if systemEvent.Owner == common.CoreMetaDataServiceKey {
-					if systemEvent.Type != common.DeviceProfileSystemEventType && systemEvent.Action != common.SystemEventActionDelete {
-						lc.Errorf("only support device profile delete system events from owner %s", systemEvent.Owner)
+					if systemEvent.Type != common.ProfileSystemEventType && systemEvent.Action != common.SystemEventActionDelete {
+						lc.Errorf("only support node profile delete system events from owner %s", systemEvent.Owner)
 					}
 				} else if systemEvent.Owner != serviceName && systemEvent.Owner != serviceBaseName {
 					lc.Errorf("unmatched system event owner %s with service name %s", systemEvent.Owner, serviceName)
@@ -101,13 +101,13 @@ func MetadataSystemEventsCallback(ctx context.Context, serviceBaseName string, d
 				}
 
 				switch systemEvent.Type {
-				case common.DeviceSystemEventType:
-					err = deviceSystemEventAction(systemEvent, dic)
+				case common.NodeSystemEventType:
+					err = nodeSystemEventAction(systemEvent, dic)
 					if err != nil {
 						lc.Error(err.Error(), common.CorrelationHeader, msgEnvelope.CorrelationID)
 					}
-				case common.DeviceProfileSystemEventType:
-					err = deviceProfileSystemEventAction(systemEvent, dic)
+				case common.ProfileSystemEventType:
+					err = profileSystemEventAction(systemEvent, dic)
 					if err != nil {
 						lc.Error(err.Error(), common.CorrelationHeader, msgEnvelope.CorrelationID)
 					}
@@ -116,8 +116,8 @@ func MetadataSystemEventsCallback(ctx context.Context, serviceBaseName string, d
 					if err != nil {
 						lc.Error(err.Error(), common.CorrelationHeader, msgEnvelope.CorrelationID)
 					}
-				case common.DeviceServiceSystemEventType:
-					err = deviceServiceSystemEventAction(systemEvent, dic)
+				case common.NodeServiceSystemEventType:
+					err = nodeServiceSystemEventAction(systemEvent, dic)
 					if err != nil {
 						lc.Error(err.Error(), common.CorrelationHeader, msgEnvelope.CorrelationID)
 					}
@@ -132,22 +132,22 @@ func MetadataSystemEventsCallback(ctx context.Context, serviceBaseName string, d
 	return nil
 }
 
-func deviceSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Container) error {
-	var device dtos.Device
-	err := systemEvent.DecodeDetails(&device)
+func nodeSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Container) error {
+	var node dtos.Node
+	err := systemEvent.DecodeDetails(&node)
 	if err != nil {
 		return fmt.Errorf("failed to decode %s system event details: %s", systemEvent.Type, err.Error())
 	}
 
 	switch systemEvent.Action {
 	case common.SystemEventActionAdd:
-		err = application.AddDevice(requests.NewAddDeviceRequest(device), dic)
+		err = application.AddNode(requests.NewAddNodeRequest(node), dic)
 	case common.SystemEventActionUpdate:
-		deviceModel := dtos.ToDeviceModel(device)
-		updateDeviceDTO := dtos.FromDeviceModelToUpdateDTO(deviceModel)
-		err = application.UpdateDevice(requests.NewUpdateDeviceRequest(updateDeviceDTO), dic)
+		nodeModel := dtos.ToNodeModel(node)
+		updateNodeDTO := dtos.FromNodeModelToUpdateDTO(nodeModel)
+		err = application.UpdateNode(requests.NewUpdateNodeRequest(updateNodeDTO), dic)
 	case common.SystemEventActionDelete:
-		err = application.DeleteDevice(device.Name, dic)
+		err = application.DeleteNode(node.Name, dic)
 	default:
 		return fmt.Errorf("unknown %s system event action %s", systemEvent.Type, systemEvent.Action)
 	}
@@ -155,19 +155,19 @@ func deviceSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Container) er
 	return err
 }
 
-func deviceProfileSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Container) error {
-	var deviceProfile dtos.DeviceProfile
-	err := systemEvent.DecodeDetails(&deviceProfile)
+func profileSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Container) error {
+	var profile dtos.Profile
+	err := systemEvent.DecodeDetails(&profile)
 	if err != nil {
 		return fmt.Errorf("failed to decode %s system event details: %s", systemEvent.Type, err.Error())
 	}
 
 	switch systemEvent.Action {
 	case common.SystemEventActionUpdate:
-		err = application.UpdateProfile(requests.NewDeviceProfileRequest(deviceProfile), dic)
+		err = application.UpdateProfile(requests.NewProfileRequest(profile), dic)
 	case common.SystemEventActionDelete:
-		err = application.DeleteProfile(deviceProfile.Name, dic)
-	// there is no action needed for Device Profile Add in Device Service
+		err = application.DeleteProfile(profile.Name, dic)
+	// there is no action needed for Node Profile Add in Node Service
 	case common.SystemEventActionAdd:
 		break
 	default:
@@ -200,19 +200,19 @@ func provisionWatcherSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Con
 	return err
 }
 
-func deviceServiceSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Container) error {
-	var deviceService dtos.DeviceService
-	err := systemEvent.DecodeDetails(&deviceService)
+func nodeServiceSystemEventAction(systemEvent dtos.SystemEvent, dic *di.Container) error {
+	var nodeService dtos.NodeService
+	err := systemEvent.DecodeDetails(&nodeService)
 	if err != nil {
 		return fmt.Errorf("failed to decode %s system event details: %s", systemEvent.Type, err.Error())
 	}
 
 	switch systemEvent.Action {
 	case common.SystemEventActionUpdate:
-		deviceServiceModel := dtos.ToDeviceServiceModel(deviceService)
-		updateDeviceServiceDTO := dtos.FromDeviceServiceModelToUpdateDTO(deviceServiceModel)
-		err = application.UpdateDeviceService(requests.NewUpdateDeviceServiceRequest(updateDeviceServiceDTO), dic)
-	// there is no action needed for Device Service Add and Delete in Device Service
+		nodeServiceModel := dtos.ToNodeServiceModel(nodeService)
+		updateNodeServiceDTO := dtos.FromNodeServiceModelToUpdateDTO(nodeServiceModel)
+		err = application.UpdateNodeService(requests.NewUpdateNodeServiceRequest(updateNodeServiceDTO), dic)
+	// there is no action needed for Node Service Add and Delete in Node Service
 	case common.SystemEventActionAdd, common.SystemEventActionDelete:
 		break
 	default:

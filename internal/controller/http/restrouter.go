@@ -59,12 +59,12 @@ func (c *RestController) InitRestRoutes(dic *di.Container) {
 	// discovery
 	c.addReservedRoute(common.ApiDiscoveryRoute, c.Discovery, http.MethodPost, authenticationHook)
 	c.addReservedRoute(common.ApiProfileScanRoute, c.ProfileScan, http.MethodPost, authenticationHook)
-	c.addReservedRoute(common.ApiDiscoveryRoute, c.StopDeviceDiscovery, http.MethodDelete, authenticationHook)
-	c.addReservedRoute(common.ApiDiscoveryByIdRoute, c.StopDeviceDiscovery, http.MethodDelete, authenticationHook)
-	c.addReservedRoute(common.ApiProfileScanByDeviceNameRoute, c.StopProfileScan, http.MethodDelete, authenticationHook)
-	// device command
-	c.addReservedRoute(common.ApiDeviceNameCommandNameRoute, c.GetCommand, http.MethodGet, authenticationHook)
-	c.addReservedRoute(common.ApiDeviceNameCommandNameRoute, c.SetCommand, http.MethodPut, authenticationHook)
+	c.addReservedRoute(common.ApiDiscoveryRoute, c.StopNodeDiscovery, http.MethodDelete, authenticationHook)
+	c.addReservedRoute(common.ApiDiscoveryByIdRoute, c.StopNodeDiscovery, http.MethodDelete, authenticationHook)
+	c.addReservedRoute(common.ApiProfileScanByNodeNameRoute, c.StopProfileScan, http.MethodDelete, authenticationHook)
+	// node command
+	c.addReservedRoute(common.ApiNodeNameCommandNameRoute, c.GetCommand, http.MethodGet, authenticationHook)
+	c.addReservedRoute(common.ApiNodeNameCommandNameRoute, c.SetCommand, http.MethodPut, authenticationHook)
 }
 
 func (c *RestController) addReservedRoute(route string, handler func(e echo.Context) error, method string,
@@ -144,7 +144,7 @@ func (c *RestController) sendEventResponse(
 
 	_, err = writer.Write(data)
 	if err != nil {
-		c.lc.Errorf("Unable to write DeviceCommand response: %s; %s: %s", err.Error(), common.CorrelationHeader, correlationID)
+		c.lc.Errorf("Unable to write Command response: %s; %s: %s", err.Error(), common.CorrelationHeader, correlationID)
 		// set Response.Committed to false in order to rewrite the status code
 		writer.Committed = false
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())

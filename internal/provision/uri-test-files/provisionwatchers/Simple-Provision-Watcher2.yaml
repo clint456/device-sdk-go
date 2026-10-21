@@ -1,5 +1,5 @@
 name: Simple-Provision-Watcher2
-serviceName: device-simple
+serviceName: node-simple
 labels:
   - simple
 identifiers:
@@ -11,8 +11,8 @@ blockingIdentifiers:
     - 398
     - 399
 adminState: UNLOCKED
-discoveredDevice:
-  profileName: Simple-Device2
+discoveredNode:
+  profileName: Simple-Node2
   adminState: UNLOCKED
   autoEvents:
     - interval: 15s

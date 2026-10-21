@@ -16,22 +16,22 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 )
 
-func SubscribeDeviceValidation(ctx context.Context, dic *di.Container) errors.EdgeX {
+func SubscribeNodeValidation(ctx context.Context, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	configuration := container.ConfigurationFrom(dic.Get)
 	messageBusInfo := container.ConfigurationFrom(dic.Get).MessageBus
-	serviceName := container.DeviceServiceFrom(dic.Get).Name
+	serviceName := container.NodeServiceFrom(dic.Get).Name
 
 	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
-		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetNameFieldPath(serviceName).SetPath(common.ValidateDeviceSubscribeTopic).BuildPath()
-	lc.Infof("Subscribing to device validation requests on topic: %s", requestTopic)
+		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetNameFieldPath(serviceName).SetPath(common.ValidateNodeSubscribeTopic).BuildPath()
+	lc.Infof("Subscribing to node validation requests on topic: %s", requestTopic)
 
 	responseTopicPrefix := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
 		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetPath(common.ResponseTopic).SetNameFieldPath(serviceName).BuildPath()
-	lc.Infof("Responses to device validation requests will be published on topic: %s/<requestId>", responseTopicPrefix)
+	lc.Infof("Responses to node validation requests will be published on topic: %s/<requestId>", responseTopicPrefix)
 
 	messages := make(chan types.MessageEnvelope, 1)
 	messageErrors := make(chan error, 1)
@@ -57,48 +57,48 @@ func SubscribeDeviceValidation(ctx context.Context, dic *di.Container) errors.Ed
 			case err = <-messageErrors:
 				lc.Error(err.Error())
 			case msgEnvelope := <-messages:
-				lc.Debugf("Device validation request received on message queue. Topic: %s, Correlation-id: %s", msgEnvelope.ReceivedTopic, msgEnvelope.CorrelationID)
+				lc.Debugf("Node validation request received on message queue. Topic: %s, Correlation-id: %s", msgEnvelope.ReceivedTopic, msgEnvelope.CorrelationID)
 
 				responseTopic := common.BuildTopic(responseTopicPrefix, msgEnvelope.RequestID)
 
 				driver := container.ProtocolDriverFrom(dic.Get)
 
-				var deviceRequest requests.AddDeviceRequest
-				deviceRequest, err = types.GetMsgPayload[requests.AddDeviceRequest](msgEnvelope)
+				var nodeRequest requests.AddNodeRequest
+				nodeRequest, err = types.GetMsgPayload[requests.AddNodeRequest](msgEnvelope)
 				if err != nil {
-					lc.Errorf("Failed to JSON decoding AddDeviceRequest: %s", err.Error())
+					lc.Errorf("Failed to JSON decoding AddNodeRequest: %s", err.Error())
 					res := types.NewMessageEnvelopeWithError(msgEnvelope.RequestID, err.Error())
 					err = messageBus.Publish(res, responseTopic)
 					if err != nil {
-						lc.Errorf("Failed to publish device validation error response: %s", err.Error())
+						lc.Errorf("Failed to publish node validation error response: %s", err.Error())
 					}
 					continue
 				}
 
-				err = driver.ValidateDevice(dtos.ToDeviceModel(deviceRequest.Device))
+				err = driver.ValidateNode(dtos.ToNodeModel(nodeRequest.Node))
 				if err != nil {
-					lc.Errorf("Device validation failed: %s", err.Error())
+					lc.Errorf("Node validation failed: %s", err.Error())
 					res := types.NewMessageEnvelopeWithError(msgEnvelope.RequestID, err.Error())
 					err = messageBus.Publish(res, responseTopic)
 					if err != nil {
-						lc.Errorf("Failed to publish device validation error response: %s", err.Error())
+						lc.Errorf("Failed to publish node validation error response: %s", err.Error())
 					}
 					continue
 				}
 
 				res, err := types.NewMessageEnvelopeForResponse(nil, msgEnvelope.RequestID, msgEnvelope.CorrelationID, common.ContentTypeJSON)
 				if err != nil {
-					lc.Errorf("Failed to create device validation response envelope: %s", err.Error())
+					lc.Errorf("Failed to create node validation response envelope: %s", err.Error())
 					continue
 				}
 
 				err = messageBus.Publish(res, responseTopic)
 				if err != nil {
-					lc.Errorf("Failed to publish device validation response: %s", err.Error())
+					lc.Errorf("Failed to publish node validation response: %s", err.Error())
 					continue
 				}
 
-				lc.Debugf("Device validation response published on message queue. Topic: %s, Correlation-id: %s", responseTopic, msgEnvelope.CorrelationID)
+				lc.Debugf("Node validation response published on message queue. Topic: %s, Correlation-id: %s", responseTopic, msgEnvelope.CorrelationID)
 			}
 		}
 	}()

@@ -7,7 +7,7 @@ ENABLE_PIE=true
 
 ARCH=$(shell uname -m)
 
-MICROSERVICES=example/cmd/device-simple/device-simple
+MICROSERVICES=example/cmd/node-simple/node-simple
 .PHONY: $(MICROSERVICES)
 
 VERSION=$(shell cat ./VERSION 2>/dev/null || echo 0.0.0)
@@ -18,8 +18,8 @@ ifeq ($(ENABLE_FULL_RELRO), true)
 	ENABLE_FULL_RELRO_GOFLAGS = -bindnow
 endif
 
-GOFLAGS=-ldflags "-X github.com/edgexfoundry/device-sdk-go/v4.Version=$(VERSION) \
-                  -X github.com/edgexfoundry/device-sdk-go/v4/internal/common.SDKVersion=$(SDKVERSION) \
+GOFLAGS=-ldflags "-X github.com/edgexfoundry/south-sdk-go/v4.Version=$(VERSION) \
+                  -X github.com/edgexfoundry/south-sdk-go/v4/internal/common.SDKVersion=$(SDKVERSION) \
                   $(ENABLE_FULL_RELRO_GOFLAGS)" -trimpath -mod=readonly
 
 GOTESTFLAGS?=-race
@@ -37,15 +37,15 @@ tidy:
 
 # CGO is enabled by default and cause docker builds to fail due to no gcc,
 # but is required for test with -race, so must disable it for the builds only
-example/cmd/device-simple/device-simple:
-	CGO_ENABLED=0  go build $(GOFLAGS) -o $@ ./example/cmd/device-simple
+example/cmd/node-simple/node-simple:
+	CGO_ENABLED=0  go build $(GOFLAGS) -o $@ ./example/cmd/node-simple
 
 docker:
 	docker build \
-		-f example/cmd/device-simple/Dockerfile \
+		-f example/cmd/node-simple/Dockerfile \
 		--label "git_sha=$(GIT_SHA)" \
-		-t edgexfoundry/device-simple:$(GIT_SHA) \
-		-t edgexfoundry/device-simple:$(DOCKER_TAG) \
+		-t edgexfoundry/node-simple:$(GIT_SHA) \
+		-t edgexfoundry/node-simple:$(DOCKER_TAG) \
 		.
 
 unittest:

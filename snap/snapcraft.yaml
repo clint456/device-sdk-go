@@ -1,15 +1,15 @@
-name: edgex-device-simple
+name: edgex-node-simple
 # The snap to derive the runtime rootfs from, here core18 corresponds to a 
 # minimal Ubuntu 18.04 Server rootfs
 base: core18
 type: app
 adopt-info: version
 license: Apache-2.0
-title: EdgeX Simple Device Service
-summary: Demonstrate the Device SDK go in EdgeX using device-simple
+title: EdgeX Simple Node Service
+summary: Demonstrate the Node SDK go in EdgeX using node-simple
 description: |
-  device-simple is an example EdgeX Device Service built using the 
-  device-sdk-go.
+  node-simple is an example EdgeX Node Service built using the 
+  south-sdk-go.
 
 # delhi: 0, edinburgh: 1, fuji: 2, geneva: 3, ireland: 4
 epoch: 4
@@ -25,21 +25,21 @@ grade: stable
 confinement: strict
 
 apps:
-  device-simple:
+  node-simple:
     # `adapter` specifies what kind of environment variables need to be setup
     # for the app, since our app is a statically compiled go app, we don't 
     # need any of the env vars, but if this was a c program or used cgo, we 
     # would need adapter: full
     adapter: none
-    command: bin/device-simple --registry $CONFIG_PRO_ARG $CONF_ARG
+    command: bin/node-simple --registry $CONFIG_PRO_ARG $CONF_ARG
     # Since we can't include the colon ':' characters in the command above,
     # we need to specify the consul address in an env var like so
     # see https://bugs.launchpad.net/snapd/+bug/1827392 for more details
     environment:
       CONFIG_PRO_ARG: "--cp=consul.http://localhost:8500"
-      CONF_ARG: "--configDir=$SNAP_DATA/config/device-simple/res"
-      DEVICE_DEVICESDIR: "$SNAP_DATA/config/device-simple/res/devices"
-      DEVICE_PROFILESDIR: "$SNAP_DATA/config/device-simple/res/profiles"
+      CONF_ARG: "--configDir=$SNAP_DATA/config/node-simple/res"
+      NODE_NODESDIR: "$SNAP_DATA/config/node-simple/res/nodes"
+      NODE_PROFILESDIR: "$SNAP_DATA/config/node-simple/res/profiles"
     # The service is a simple service that is directly exec'd and expected to
     # always run in a single long-lived process
     daemon: simple
@@ -56,7 +56,7 @@ parts:
       GIT_VERSION=$(git describe --tags --abbrev=0 | sed 's/v//')
       snapcraftctl set-version ${GIT_VERSION}
 
-  device-simple:
+  node-simple:
     source: .
     plugin: make
     build-packages: [git, libzmq3-dev, zip, pkg-config]
@@ -64,36 +64,36 @@ parts:
       - go/1.16/stable
     stage-packages: [libzmq5]
     override-build: |
-      # Build device-simple first
+      # Build node-simple first
       cd $SNAPCRAFT_PART_SRC
       make build
 
       # Copy the resulting binary into $SNAPCRAFT_PART_INSTALL in the build
       # environment, which snapcraft will pack into $SNAP when the build is
       # done.
-      install -DT "./example/cmd/device-simple/device-simple" \
-        "$SNAPCRAFT_PART_INSTALL/bin/device-simple"
+      install -DT "./example/cmd/node-simple/node-simple" \
+        "$SNAPCRAFT_PART_INSTALL/bin/node-simple"
       
       # "ProfilesDir" in combination with the confdir and profile command-line
       # options are sufficient to not need to cd before exec'ing the binary.
       # Change "ProfilesDir" to be under $SNAP_DATA which is writable and 
-      # where the install hook copies the config files and device profiles to
+      # where the install hook copies the config files and node profiles to
       # when the snap is first installed
-      install -DT "./example/cmd/device-simple/res/configuration.yaml" \
-        "$SNAPCRAFT_PART_INSTALL/config/device-simple/res/configuration.yaml"
+      install -DT "./example/cmd/node-simple/res/configuration.yaml" \
+        "$SNAPCRAFT_PART_INSTALL/config/node-simple/res/configuration.yaml"
 
-      # Install the example device and device profile
-      install -DT "./example/cmd/device-simple/res/devices/simple-device.toml" \
-        "$SNAPCRAFT_PART_INSTALL/config/device-simple/res/devices/simple-device.toml"
-      install -DT "./example/cmd/device-simple/res/profiles/Simple-Driver.yaml" \
-        "$SNAPCRAFT_PART_INSTALL/config/device-simple/res/profiles/Simple-Driver.yaml"
+      # Install the example node and node profile
+      install -DT "./example/cmd/node-simple/res/nodes/simple-node.toml" \
+        "$SNAPCRAFT_PART_INSTALL/config/node-simple/res/nodes/simple-node.toml"
+      install -DT "./example/cmd/node-simple/res/profiles/Simple-Driver.yaml" \
+        "$SNAPCRAFT_PART_INSTALL/config/node-simple/res/profiles/Simple-Driver.yaml"
 
       # Also install the Attribution.txt and LICENSE files into the snap at 
-      # usr/share/doc/device-simple which is a debian standard location for
+      # usr/share/doc/node-simple which is a debian standard location for
       # licenses in the snap.
       # Note also if the license is changed that the license key in the
       # metadata for the snap at the top of this file should be updated too.
-      install -DT "./example/cmd/device-simple/Attribution.txt" \
-         "$SNAPCRAFT_PART_INSTALL/usr/share/doc/device-simple/Attribution.txt"
+      install -DT "./example/cmd/node-simple/Attribution.txt" \
+         "$SNAPCRAFT_PART_INSTALL/usr/share/doc/node-simple/Attribution.txt"
       install -DT "./LICENSE" \
-         "$SNAPCRAFT_PART_INSTALL/usr/share/doc/device-simple/LICENSE"
+         "$SNAPCRAFT_PART_INSTALL/usr/share/doc/node-simple/LICENSE"

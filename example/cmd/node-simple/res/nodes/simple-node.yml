@@ -1,7 +1,7 @@
-deviceList:
-  - name: Simple-Device01
-    profileName: Simple-Device
-    description: Example of Simple Device
+nodeList:
+  - name: Simple-Node01
+    profileName: Simple-Node
+    description: Example of Simple Node
     labels:
       - industrial
     protocols:
@@ -15,7 +15,7 @@ deviceList:
       - interval: 30s
         onChange: false
         sourceName: Image
-  - name: ProfileScan-Simple-Device
+  - name: ProfileScan-Simple-Node
     protocols:
       other:
         Address: simple01

@@ -9,13 +9,13 @@ package container
 import (
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
 )
 
-// ConfigurationName contains the name of device service's ConfigurationStruct implementation in the DIC.
+// ConfigurationName contains the name of node service's ConfigurationStruct implementation in the DIC.
 var ConfigurationName = di.TypeInstanceToName(config.ConfigurationStruct{})
 
-// ConfigurationFrom helper function queries the DIC and returns device service's ConfigurationStruct implementation.
+// ConfigurationFrom helper function queries the DIC and returns node service's ConfigurationStruct implementation.
 func ConfigurationFrom(get di.Get) *config.ConfigurationStruct {
 	return get(ConfigurationName).(*config.ConfigurationStruct)
 }

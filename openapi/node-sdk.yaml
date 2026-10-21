@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: EdgeX Foundry - Device Service API
-  description: This is the definition of the API for Device services in the EdgeX Foundry IOT microservice platform. Device Services are responsible for obtaining Readings from target devices, and for writing values (settings) to them.
+  title: EdgeX Foundry - Node Service API
+  description: This is the definition of the API for Node services in the EdgeX Foundry IOT microservice platform. Node Services are responsible for obtaining Readings from target nodes, and for writing values (settings) to them.
   version: 4.0.0
 
 servers:
@@ -11,7 +11,7 @@ servers:
 components:
   schemas:
     AutoEvent:
-      description: "Identifies a resource which will be read automatically by the device service."
+      description: "Identifies a resource which will be read automatically by the node service."
       type: object
       properties:
         interval:
@@ -22,7 +22,7 @@ components:
           description: "If true, new Events will only be generated if successive readings differ in value."
           type: boolean
         sourceName:
-          description: "SourceName indicates the name of the resource or device command in the device profile which describes the event to generate"
+          description: "SourceName indicates the name of the resource or node command in the node profile which describes the event to generate"
           type: string
       required:
         - sourceName
@@ -61,57 +61,57 @@ components:
         message:
           description: "A field that can contain a free-form message, such as an error message."
           type: string
-    Device:
-      description: "A device is an IoT object represented in EdgeX."
+    Node:
+      description: "A node is an IoT object represented in EdgeX."
       type: object
       properties:
         id:
           type: string
           format: uuid
-          description: "The unique identifier of the device"
+          description: "The unique identifier of the node"
         name:
           type: string
-          description: "The name of the device"
+          description: "The name of the node"
         description:
           type: string
-          description: "A free-format descriptive field for additional device information"
+          description: "A free-format descriptive field for additional node information"
         adminState:
           type: string
           enum: [LOCKED, UNLOCKED]
-          description: "Administrative state of the device, allowing it to be locked for policy reasons"
+          description: "Administrative state of the node, allowing it to be locked for policy reasons"
         operatingState:
           type: string
           enum: [UP, DOWN, UNKNOWN]
-          description: "Operating state of the device, indicating whether it is currently responsive"
+          description: "Operating state of the node, indicating whether it is currently responsive"
         labels:
           type: array
           items:
             type: string
-          description: "Other labels applied to the device to help with searching"
+          description: "Other labels applied to the node to help with searching"
         location:
           type: object
-          description: "Device service specific location information"
+          description: "Node service specific location information"
         serviceName:
           type: string
-          description: "Associated device service referenced by name"
+          description: "Associated node service referenced by name"
         profileName:
           type: string
-          description: "Associated device profile referenced by name"
+          description: "Associated node profile referenced by name"
         autoEvents:
           type: array
           items:
             $ref: '#/components/schemas/AutoEvent'
-          description: "Events which the service should generate automatically from this device."
+          description: "Events which the service should generate automatically from this node."
         protocols:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/ProtocolProperties'
         tags:
           type: object
-          description: "A map of tags used to tag the given device."
+          description: "A map of tags used to tag the given node."
         properties:
           type: object
-          description: "A map of properties required to address the given device."
+          description: "A map of properties required to address the given node."
     BaseReading:
       description: "A base reading type containing common properties from which more specific reading types inherit. This definition should not be implemented but is used elsewhere to indicate support for a mixed list of simple/binary readings in a single event."
       type: object
@@ -127,22 +127,22 @@ components:
           description: "A Unix timestamp indicating when (if) the reading was initially persisted to a database."
           type: integer
         origin:
-          description: "A Unix timestamp indicating when the reading was originated at the source device (can support nanoseconds)"
+          description: "A Unix timestamp indicating when the reading was originated at the source node (can support nanoseconds)"
           type: integer
-        deviceName:
-          description: "The name of the device from which the reading originated"
+        nodeName:
+          description: "The name of the node from which the reading originated"
           type: string
         resourceName:
-          description: "The device resource name for the reading"
+          description: "The node resource name for the reading"
           type: string
         profileName:
-          description: "The device profile name for the reading"
+          description: "The node profile name for the reading"
           type: string
         valueType:
           description: "Indicates the datatype of the value property"
           type: string
       required:
-        - deviceName
+        - nodeName
         - resourceName
         - profileName
         - origin
@@ -195,17 +195,17 @@ components:
           description: "The unique identifier for the event"
           type: string
           format: uuid
-        deviceName:
-          description: "The name of the device from which the event originated"
+        nodeName:
+          description: "The name of the node from which the event originated"
           type: string
         profileName:
-          description: "The name of the device profile from which the event originated"
+          description: "The name of the node profile from which the event originated"
           type: string
         created:
           description: "A Unix timestamp indicating when (if) the event was initially persisted to a database."
           type: integer
         origin:
-          description: "A Unix timestamp indicating when the event was originated at the source device (can support nanoseconds)"
+          description: "A Unix timestamp indicating when the event was originated at the source node (can support nanoseconds)"
           type: integer
         readings:
           description: "One or more readings captured at the time of the event"
@@ -225,7 +225,7 @@ components:
             Longitude: "-95.377603"
       required:
         - id
-        - deviceName
+        - nodeName
         - profileName
         - origin
         - readings
@@ -255,16 +255,16 @@ components:
         config:
           description: "An object containing the service''s configuration. Please refer to Core Data''s configuration documentation for more details at [EdgeX Foundry Documentation](https://docs.edgexfoundry.org)."
           type: object
-    DeviceValidationRequest:
+    NodeValidationRequest:
       allOf:
         - $ref: '#/components/schemas/BaseRequest'
-      description: "Notification that a new device associated with this device service has been created."
+      description: "Notification that a new node associated with this node service has been created."
       type: object
       properties:
-        device:
-          $ref: '#/components/schemas/Device'
+        node:
+          $ref: '#/components/schemas/Node'
       required:
-        - device
+        - node
     PingResponse:
       description: "A response from the /ping endpoint indicating that the service is functioning."
       type: object
@@ -280,7 +280,7 @@ components:
           description: "Outputs the name of the service the response is from"
           type: string
     ProtocolProperties:
-      description: "The properties required to address a device via a particular protocol."
+      description: "The properties required to address a node via a particular protocol."
       example: {"Host":"floor4.hq.acme.com", "Port":"8080"}
       type: object
       additionalProperties:
@@ -319,7 +319,7 @@ components:
         - key
         - value
     SettingRequest:
-      description: "Defines new values to be written to device resources, as part of an actuation (put) command to a device"
+      description: "Defines new values to be written to node resources, as part of an actuation (put) command to a node"
       additionalProperties:
         type: string
       title: Setting
@@ -347,14 +347,14 @@ components:
       description: Defines the information for the profile scan
       type: object
       properties:
-        deviceName:
-          description: Specifies the device to generate the profile
+        nodeName:
+          description: Specifies the node to generate the profile
           type: string
-          example: "Test-Device"
+          example: "Test-Node"
         profileName:
-          description: Specifies the unique profile name. Default format is {deviceName}_profile_{timestamp}
+          description: Specifies the unique profile name. Default format is {nodeName}_profile_{timestamp}
           type: string
-          example: "Test-Device_profile_1720169510"
+          example: "Test-Node_profile_1720169510"
         options:
           type: object
           example:
@@ -362,7 +362,7 @@ components:
             DiscoverProperties: [ 103, 117 ]
             DiscoverObjects: [ 1, 2, 3, 4, 5]
       required:
-        - deviceName
+        - nodeName
 
   parameters:
     correlatedRequestHeader:
@@ -416,9 +416,9 @@ components:
         message: "Internal Server Error"
 
 paths:
-  /device/name/{name}/{command}:
+  /node/name/{name}/{command}:
     get:
-      description: Request the device/sensor by its name to return the current (or in some cases new) event/reading values for the command or device resource specified. The device service may have cached the latest event/reading for the sensor(s) or it may immediate request new event/reading values depending on the implementation and the device(s)/sensor(s) capability.
+      description: Request the node/sensor by its name to return the current (or in some cases new) event/reading values for the command or node resource specified. The node service may have cached the latest event/reading for the sensor(s) or it may immediate request new event/reading values depending on the implementation and the node(s)/sensor(s) capability.
       parameters:
         - $ref: '#/components/parameters/correlatedRequestHeader'
         - in: path
@@ -427,7 +427,7 @@ paths:
           schema:
             type: string
           example: sensor01
-          description: "A name uniquely identifying a device."
+          description: "A name uniquely identifying a node."
         - in: path
           name: command
           required: true
@@ -472,7 +472,7 @@ paths:
           description: "Base64-encoded JSON string for passing additional parameters"
       responses:
         '200':
-          description: String as returned by the device/sensor through the device service.
+          description: String as returned by the node/sensor through the node service.
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -481,7 +481,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventResponse'
         '404':
-          description: If no device exists by the name provided or the command is unknown.
+          description: If no node exists by the name provided or the command is unknown.
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -505,7 +505,7 @@ paths:
                 405Example:
                   $ref: '#/components/examples/405Example'
         '423':
-          description: If the device or service is locked (admin state), disabled (operating state), or lacks associated profile.
+          description: If the node or service is locked (admin state), disabled (operating state), or lacks associated profile.
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -517,7 +517,7 @@ paths:
                 423Example:
                   $ref: '#/components/examples/423Example'
         '500':
-          description: The device driver is unable to process the request, or too many values were returned.
+          description: The node driver is unable to process the request, or too many values were returned.
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -529,7 +529,7 @@ paths:
                 500Example:
                   $ref: '#/components/examples/500Example'
     put:
-      description: Request the actuator by its name to trigger a action or set a current value for the command or device resource specified.
+      description: Request the actuator by its name to trigger a action or set a current value for the command or node resource specified.
       parameters:
         - $ref: '#/components/parameters/correlatedRequestHeader'
         - in: path
@@ -559,7 +559,7 @@ paths:
                 requestId: "48395596-9f75-4556-97b4-8a834d26c1c7"
                 statusCode: 200
         '404':
-          description: If no device exists for the name provided or the command is unknown.
+          description: If no node exists for the name provided or the command is unknown.
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -583,7 +583,7 @@ paths:
                 405Example:
                   $ref: '#/components/examples/405Example'
         '423':
-          description: If the device or service is locked (admin state) or disabled (operating state).
+          description: If the node or service is locked (admin state) or disabled (operating state).
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -595,7 +595,7 @@ paths:
                 423Example:
                   $ref: '#/components/examples/423Example'
         '500':
-          description: The device driver is unable to process the request.
+          description: The node driver is unable to process the request.
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -666,7 +666,7 @@ paths:
 
   /discovery:
     post:
-      description: Run the discovery request for a Device Service. No request body is required.
+      description: Run the discovery request for a Node Service. No request body is required.
       responses:
         '202':
           description: The service is running the discovery request.
@@ -678,7 +678,7 @@ paths:
                 apiVersion: "v3"
                 requestId: "e6e8a2f4-eb14-4649-9e2b-175247911369"
                 statusCode: 202
-                message: "Device Discovery is triggered"
+                message: "Node Discovery is triggered"
         '423':
           description: The service is disabled or administratively locked.
           content:
@@ -709,7 +709,7 @@ paths:
                 statusCode: 503
                 message: "HTTP request timeout"
     delete:
-      summary: "Stop the ongoing device discovery process"
+      summary: "Stop the ongoing node discovery process"
       parameters:
         - $ref: '#/components/parameters/correlatedRequestHeader'
       responses:
@@ -758,7 +758,7 @@ paths:
           format: uuid
         description: "An ID of datatype string, by default a GUID."
     delete:
-      summary: "Stop the ongoing device discovery process with the specified request id"
+      summary: "Stop the ongoing node discovery process with the specified request id"
       responses:
         '200':
           description: "OK"
@@ -810,7 +810,7 @@ paths:
     parameters:
       - $ref: '#/components/parameters/correlatedRequestHeader'
     post:
-      description: Run the discovery request to generate a associated device profile for a specified device.
+      description: Run the discovery request to generate a associated node profile for a specified node.
       requestBody:
         content:
           application/json:
@@ -832,7 +832,7 @@ paths:
                 apiVersion: "v3"
                 requestId: "e6e8a2f4-eb14-4649-9e2b-175247911369"
                 statusCode: 202
-                message: "Device ProfileScan is triggered"
+                message: "Node ProfileScan is triggered"
         '400':
           description: "Request is in an invalid state"
           headers:
@@ -871,7 +871,7 @@ paths:
                 statusCode: 409
                 message: "Data Duplicate"
         '423':
-          description: The device service is locked (admin state).
+          description: The node service is locked (admin state).
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -903,7 +903,7 @@ paths:
                 statusCode: 501
                 message: "Not implemented"
 
-  /profilescan/device/name/{name}:
+  /profilescan/node/name/{name}:
     parameters:
       - $ref: '#/components/parameters/correlatedRequestHeader'
       - name: name
@@ -911,9 +911,9 @@ paths:
         required: true
         schema:
           type: string
-        description: "Uniquely identifies a given device"
+        description: "Uniquely identifies a given node"
     delete:
-      summary: "Stop the ongoing device profile scanning process for a specific device"
+      summary: "Stop the ongoing node profile scanning process for a specific node"
       responses:
         '200':
           description: "OK"
@@ -938,7 +938,7 @@ paths:
                 400Example:
                   $ref: '#/components/examples/404Example'
         '423':
-          description: The device service is locked (admin state).
+          description: The node service is locked (admin state).
           headers:
             X-Correlation-ID:
               $ref: '#/components/headers/correlatedResponseHeader'
@@ -1011,7 +1011,7 @@ paths:
               example:
                 apiVersion: "v3"
                 timestamp: "Mon, 02 Jan 2006 15:04:05 MST"
-                serviceName: "device-simple"
+                serviceName: "node-simple"
         '500':
           description: Interval Server Error
           headers:
@@ -1042,7 +1042,7 @@ paths:
                 apiVersion: "v3"
                 version: "4.0.0"
                 "sdk_version": "4.0.0"
-                serviceName: "device-simple"
+                serviceName: "node-simple"
         '500':
           description: Interval Server Error
           headers:

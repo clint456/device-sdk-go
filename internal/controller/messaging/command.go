@@ -19,18 +19,18 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/application"
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/application"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 )
 
 // defaultMaxConcurrentCommands caps in-flight MQTT command requests so a single slow or
-// offline device cannot block the consumer goroutine and starve commands to every other
-// device served by this device service. At capacity, new requests are rejected inline with
+// offline node cannot block the consumer goroutine and starve commands to every other
+// node served by this node service. At capacity, new requests are rejected inline with
 // a "service busy" envelope; queuing further would only defer the same failure and risks
 // unbounded growth.
 //
-// Drivers that require per-device serialization must enforce it themselves — the HTTP and
+// Drivers that require per-node serialization must enforce it themselves — the HTTP and
 // AutoEvent paths already invoke application.GetCommand / SetCommand concurrently today.
 const defaultMaxConcurrentCommands = 32
 
@@ -38,14 +38,14 @@ func SubscribeCommands(ctx context.Context, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	configuration := container.ConfigurationFrom(dic.Get)
 	messageBusInfo := container.ConfigurationFrom(dic.Get).MessageBus
-	deviceService := container.DeviceServiceFrom(dic.Get)
+	nodeService := container.NodeServiceFrom(dic.Get)
 
 	requestSubscribeTopic := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
-		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetPath(common.CommandRequestSubscribeTopic).SetNameFieldPath(deviceService.Name).SetPath("#").BuildPath()
+		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetPath(common.CommandRequestSubscribeTopic).SetNameFieldPath(nodeService.Name).SetPath("#").BuildPath()
 	lc.Infof("Subscribing to command requests on topic: %s", requestSubscribeTopic)
 
 	responsePublishTopicPrefix := common.NewPathBuilder().EnableNameFieldEscape(configuration.Service.EnableNameFieldEscape).
-		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetPath(common.ResponseTopic).SetNameFieldPath(deviceService.Name).BuildPath()
+		SetPath(messageBusInfo.GetBaseTopicPrefix()).SetPath(common.ResponseTopic).SetNameFieldPath(nodeService.Name).BuildPath()
 	lc.Infof("Responses to command requests will be published on topic: %s/<requestId>", responsePublishTopicPrefix)
 
 	messages := make(chan types.MessageEnvelope, 1)
@@ -80,18 +80,18 @@ func SubscribeCommands(ctx context.Context, dic *di.Container) errors.EdgeX {
 			case msgEnvelope := <-messages:
 				lc.Debugf("Command request received on message queue. Topic: %s, Correlation-id: %s", msgEnvelope.ReceivedTopic, msgEnvelope.CorrelationID)
 
-				// expected command request topic scheme: #/<service-name>/<device-name>/<command-name>/<method>
+				// expected command request topic scheme: #/<service-name>/<node-name>/<command-name>/<method>
 				topicLevels := strings.Split(msgEnvelope.ReceivedTopic, "/")
 				length := len(topicLevels)
 				if length < 4 {
-					lc.Error("Failed to parse and construct command response topic scheme, expected request topic scheme: '#/<service-name>/<device-name>/<command-name>/<method>'")
+					lc.Error("Failed to parse and construct command response topic scheme, expected request topic scheme: '#/<service-name>/<node-name>/<command-name>/<method>'")
 					continue
 				}
 
-				// expected command response topic scheme: #/<service-name>/<device-name>/<command-name>/<method>
-				deviceName, err := url.PathUnescape(topicLevels[length-3])
+				// expected command response topic scheme: #/<service-name>/<node-name>/<command-name>/<method>
+				nodeName, err := url.PathUnescape(topicLevels[length-3])
 				if err != nil {
-					lc.Errorf("Failed to unescape device name: %s", err.Error())
+					lc.Errorf("Failed to unescape node name: %s", err.Error())
 					continue
 				}
 				commandName, err := url.PathUnescape(topicLevels[length-2])
@@ -110,15 +110,15 @@ func SubscribeCommands(ctx context.Context, dic *di.Container) errors.EdgeX {
 				}
 
 				// Non-blocking acquire — never block the consumer goroutine. At capacity we
-				// reject inline rather than queue, so a stuck device cannot cause head-of-line
-				// blocking on subsequent commands to other devices.
+				// reject inline rather than queue, so a stuck node cannot cause head-of-line
+				// blocking on subsequent commands to other nodes.
 				select {
 				case sem <- struct{}{}:
 				default:
-					lc.Warnf("device command in-flight limit (%d) reached; rejecting %s request for device '%s'/'%s'",
-						cap(sem), method, deviceName, commandName)
+					lc.Warnf("node command in-flight limit (%d) reached; rejecting %s request for node '%s'/'%s'",
+						cap(sem), method, nodeName, commandName)
 					busy := types.NewMessageEnvelopeWithError(msgEnvelope.RequestID,
-						"device service busy: too many concurrent commands")
+						"node service busy: too many concurrent commands")
 					if pubErr := messageBus.Publish(busy, responsePublishTopic); pubErr != nil {
 						lc.Errorf("Failed to publish busy response: %s", pubErr.Error())
 					}
@@ -132,7 +132,7 @@ func SubscribeCommands(ctx context.Context, dic *di.Container) errors.EdgeX {
 					} else {
 						setCommand(ctx, env, topic, dev, cmd, dic)
 					}
-				}(msgEnvelope, responsePublishTopic, deviceName, commandName, upperMethod == "GET")
+				}(msgEnvelope, responsePublishTopic, nodeName, commandName, upperMethod == "GET")
 
 				lc.Debugf("Command request dispatched. Response will be published on topic: %s, Correlation-id: %s", responsePublishTopic, msgEnvelope.CorrelationID)
 			}
@@ -142,7 +142,7 @@ func SubscribeCommands(ctx context.Context, dic *di.Container) errors.EdgeX {
 	return nil
 }
 
-func getCommand(ctx context.Context, msgEnvelope types.MessageEnvelope, responseTopic string, deviceName string, commandName string, dic *di.Container) {
+func getCommand(ctx context.Context, msgEnvelope types.MessageEnvelope, responseTopic string, nodeName string, commandName string, dic *di.Container) {
 	var responseEnvelope types.MessageEnvelope
 
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
@@ -151,9 +151,9 @@ func getCommand(ctx context.Context, msgEnvelope types.MessageEnvelope, response
 
 	// TODO: fix properly in EdgeX 3.0
 	ctx = context.WithValue(ctx, common.CorrelationHeader, msgEnvelope.CorrelationID) // nolint: staticcheck
-	event, edgexErr := application.GetCommand(ctx, deviceName, commandName, rawQuery, reserved[common.RegexCommand], dic)
+	event, edgexErr := application.GetCommand(ctx, nodeName, commandName, rawQuery, reserved[common.RegexCommand], dic)
 	if edgexErr != nil {
-		lc.Errorf("Failed to process get device command %s for device %s: %s", commandName, deviceName, edgexErr.Error())
+		lc.Errorf("Failed to process get node command %s for node %s: %s", commandName, nodeName, edgexErr.Error())
 		responseEnvelope = types.NewMessageEnvelopeWithError(msgEnvelope.RequestID, edgexErr.Error())
 		err := messageBus.Publish(responseEnvelope, responseTopic)
 		if err != nil {
@@ -202,7 +202,7 @@ func getCommand(ctx context.Context, msgEnvelope types.MessageEnvelope, response
 
 }
 
-func setCommand(ctx context.Context, msgEnvelope types.MessageEnvelope, responseTopic string, deviceName string, commandName string, dic *di.Container) {
+func setCommand(ctx context.Context, msgEnvelope types.MessageEnvelope, responseTopic string, nodeName string, commandName string, dic *di.Container) {
 	var responseEnvelope types.MessageEnvelope
 
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
@@ -221,9 +221,9 @@ func setCommand(ctx context.Context, msgEnvelope types.MessageEnvelope, response
 
 	// TODO: fix properly in EdgeX 3.0
 	ctx = context.WithValue(ctx, common.CorrelationHeader, msgEnvelope.CorrelationID) // nolint: staticcheck
-	event, edgexErr := application.SetCommand(ctx, deviceName, commandName, rawQuery, requestPayload, dic)
+	event, edgexErr := application.SetCommand(ctx, nodeName, commandName, rawQuery, requestPayload, dic)
 	if edgexErr != nil {
-		lc.Errorf("Failed to process set device command %s for device %s: %s", commandName, deviceName, edgexErr.Error())
+		lc.Errorf("Failed to process set node command %s for node %s: %s", commandName, nodeName, edgexErr.Error())
 		responseEnvelope = types.NewMessageEnvelopeWithError(msgEnvelope.RequestID, edgexErr.Error())
 		err = messageBus.Publish(responseEnvelope, responseTopic)
 		if err != nil {

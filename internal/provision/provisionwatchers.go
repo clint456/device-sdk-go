@@ -14,8 +14,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/common"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/file"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/interfaces"
@@ -25,6 +23,8 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/requests"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/common"
 	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
@@ -131,7 +131,7 @@ func processProvisionWatcherFile(fullPath, displayPath string, secretProvider in
 
 	fileType := GetFileType(fullPath)
 
-	// if the file type is not yaml or json, it cannot be parsed - just return to not break the loop for other devices
+	// if the file type is not yaml or json, it cannot be parsed - just return to not break the loop for other nodes
 	if fileType == OTHER {
 		return nil
 	}

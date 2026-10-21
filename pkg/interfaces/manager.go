@@ -6,10 +6,10 @@
 package interfaces
 
 type AutoEventManager interface {
-	// StartAutoEvents starts all the AutoEvents of the device service
+	// StartAutoEvents starts all the AutoEvents of the node service
 	StartAutoEvents()
-	// RestartForDevice restarts all the AutoEvents of the specific device
-	RestartForDevice(name string)
-	// StopForDevice stops all the AutoEvents of the specific device
-	StopForDevice(name string)
+	// RestartForNode restarts all the AutoEvents of the specific node
+	RestartForNode(name string)
+	// StopForNode stops all the AutoEvents of the specific node
+	StopForNode(name string)
 }

@@ -1,12 +1,12 @@
 apiVersion: "v2"
-name: "Simple-Device2"
+name: "Simple-Node2"
 manufacturer: "Simple Corp."
 model: "SP-01"
 labels:
   - "modbus"
-description: "Example of Simple Device"
+description: "Example of Simple Node"
 
-deviceResources:
+resources:
   -
     name: "SwitchButton"
     isHidden: false
@@ -69,24 +69,24 @@ deviceResources:
       valueType: "Object"
       readWrite: "RW"
 
-deviceCommands:
+commands:
   -
     name: "Switch"
     isHidden: false
     readWrite: "RW"
     resourceOperations:
-      - { deviceResource: "SwitchButton", defaultValue: "false" }
+      - { resource: "SwitchButton", defaultValue: "false" }
   -
     name: "Image"
     isHidden: false
     readWrite: "R"
     resourceOperations:
-      - { deviceResource: "Image" }
+      - { resource: "Image" }
   -
     name: "Rotation"
     isHidden: false
     readWrite: "RW"
     resourceOperations:
-      - { deviceResource: "Xrotation", defaultValue: "0" }
-      - { deviceResource: "Yrotation", defaultValue: "0" }
-      - { deviceResource: "Zrotation", defaultValue: "0" }
+      - { resource: "Xrotation", defaultValue: "0" }
+      - { resource: "Yrotation", defaultValue: "0" }
+      - { resource: "Zrotation", defaultValue: "0" }

@@ -15,7 +15,7 @@ import (
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/startup"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 )
 
 func BootstrapHandler(
@@ -28,13 +28,13 @@ func BootstrapHandler(
 	configuration := container.ConfigurationFrom(dic.Get)
 	var runDiscovery = true
 
-	if !configuration.Device.Discovery.Enabled {
+	if !configuration.Node.Discovery.Enabled {
 		lc.Info("AutoDiscovery stopped: disabled by configuration")
 		runDiscovery = false
 	}
-	duration, err := time.ParseDuration(configuration.Device.Discovery.Interval)
+	duration, err := time.ParseDuration(configuration.Node.Discovery.Interval)
 	if err != nil {
-		lc.Errorf("AutoDiscovery stopped: interval %s error in configuration: %v", configuration.Device.Discovery.Interval, err)
+		lc.Errorf("AutoDiscovery stopped: interval %s error in configuration: %v", configuration.Node.Discovery.Interval, err)
 		runDiscovery = false
 	} else if duration <= 0 {
 		lc.Info("AutoDiscovery schedule is not started: interval <= 0")

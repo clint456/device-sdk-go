@@ -1,13 +1,13 @@
 {
   "apiVersion": "v2",
-  "name": "Simple-Device",
+  "name": "Simple-Node",
   "manufacturer": "Simple Corp.",
   "model": "SP-01",
   "labels": [
     "modbus"
   ],
-  "description": "Example of Simple Device",
-  "deviceResources": [
+  "description": "Example of Simple Node",
+  "resources": [
     {
       "name": "SwitchButton",
       "isHidden": false,
@@ -77,14 +77,14 @@
       }
     }
   ],
-  "deviceCommands": [
+  "commands": [
     {
       "name": "Switch",
       "isHidden": false,
       "readWrite": "RW",
       "resourceOperations": [
         {
-          "deviceResource": "SwitchButton",
+          "resource": "SwitchButton",
           "defaultValue": "false"
         }
       ]
@@ -95,7 +95,7 @@
       "readWrite": "R",
       "resourceOperations": [
         {
-          "deviceResource": "Image"
+          "resource": "Image"
         }
       ]
     },
@@ -105,15 +105,15 @@
       "readWrite": "RW",
       "resourceOperations": [
         {
-          "deviceResource": "Xrotation",
+          "resource": "Xrotation",
           "defaultValue": "0"
         },
         {
-          "deviceResource": "Yrotation",
+          "resource": "Yrotation",
           "defaultValue": "0"
         },
         {
-          "deviceResource": "Zrotation",
+          "resource": "Zrotation",
           "defaultValue": "0"
         }
       ]

@@ -23,15 +23,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/panjf2000/ants/v2"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/application"
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/application"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 
 	"github.com/spf13/cast"
 )
 
 type Executor struct {
-	deviceName        string
+	nodeName          string
 	sourceName        string
 	onChange          bool
 	onChangeThreshold float64
@@ -77,7 +77,7 @@ func (e *Executor) Run(ctx context.Context, wg *sync.WaitGroup, buffer chan bool
 				}
 				// After the auto event executes a read command, it will create a goroutine to send out events.
 				// When the concurrent auto event amount becomes large, core-data might be hard to handle so many HTTP requests at the same time.
-				// The device service will get some network errors like EOF or Connection reset by peer.
+				// The node service will get some network errors like EOF or Connection reset by peer.
 				// By adding a buffer here, the user can use the Service.AsyncBufferSize configuration to control the goroutine for sending events.
 				if err := e.pool.Submit(func() {
 					buffer <- true
@@ -85,7 +85,7 @@ func (e *Executor) Run(ctx context.Context, wg *sync.WaitGroup, buffer chan bool
 
 					// Protect e.onChangeReadings with mutex to avoid concurrent access
 					e.mutex.Lock()
-					if e.onChange && config.Device.AutoEvents.SendChangedReadingsOnly && len(e.onChangeReadings) != 0 {
+					if e.onChange && config.Node.AutoEvents.SendChangedReadingsOnly && len(e.onChangeReadings) != 0 {
 						// Update the auto event to include only the readings that have changed.
 						evt.Readings = e.onChangeReadings
 					}
@@ -106,10 +106,10 @@ func (e *Executor) Run(ctx context.Context, wg *sync.WaitGroup, buffer chan bool
 
 func readResource(e *Executor, dic *di.Container) (event *dtos.Event, err errors.EdgeX) {
 	vars := make(map[string]string, 2)
-	vars[common.Name] = e.deviceName
+	vars[common.Name] = e.nodeName
 	vars[common.Command] = e.sourceName
 
-	res, err := application.GetCommand(context.Background(), e.deviceName, e.sourceName, "", true, dic)
+	res, err := application.GetCommand(context.Background(), e.nodeName, e.sourceName, "", true, dic)
 	if err != nil {
 		return event, err
 	}
@@ -181,7 +181,7 @@ func (e *Executor) Stop() {
 }
 
 // NewExecutor creates an Executor for an AutoEvent
-func NewExecutor(deviceName string, ae models.AutoEvent, pool *ants.Pool) (*Executor, errors.EdgeX) {
+func NewExecutor(nodeName string, ae models.AutoEvent, pool *ants.Pool) (*Executor, errors.EdgeX) {
 	// check Frequency
 	duration, err := time.ParseDuration(ae.Interval)
 	if err != nil {
@@ -189,7 +189,7 @@ func NewExecutor(deviceName string, ae models.AutoEvent, pool *ants.Pool) (*Exec
 	}
 
 	return &Executor{
-		deviceName:        deviceName,
+		nodeName:          nodeName,
 		sourceName:        ae.SourceName,
 		onChange:          ae.OnChange,
 		onChangeThreshold: ae.OnChangeThreshold,

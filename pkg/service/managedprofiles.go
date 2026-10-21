@@ -19,20 +19,20 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 	"github.com/google/uuid"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
 )
 
-// AddDeviceProfile adds a new DeviceProfile to the Device Service and Core Metadata
-// Returns new DeviceProfile id or non-nil error.
-func (s *deviceService) AddDeviceProfile(profile models.DeviceProfile) (string, error) {
+// AddProfile adds a new Profile to the Node Service and Core Metadata
+// Returns new Profile id or non-nil error.
+func (s *nodeService) AddProfile(profile models.Profile) (string, error) {
 	if p, ok := cache.Profiles().ForName(profile.Name); ok {
 		return p.Id, errors.NewCommonEdgeX(errors.KindDuplicateName, fmt.Sprintf("name conflicted, Profile %s exists", profile.Name), nil)
 	}
 
 	s.lc.Debugf("Adding managed Profile %s", profile.Name)
-	req := requests.NewDeviceProfileRequest(dtos.FromDeviceProfileModelToDTO(profile))
+	req := requests.NewProfileRequest(dtos.FromProfileModelToDTO(profile))
 	ctx := context.WithValue(context.Background(), common.CorrelationHeader, uuid.NewString()) // nolint:staticcheck
-	res, err := container.DeviceProfileClientFrom(s.dic.Get).Add(ctx, []requests.DeviceProfileRequest{req})
+	res, err := container.ProfileClientFrom(s.dic.Get).Add(ctx, []requests.ProfileRequest{req})
 	if err != nil {
 		s.lc.Errorf("failed to add Profile %s to Core Metadata: %v", profile.Name, err)
 		return "", err
@@ -46,25 +46,25 @@ func (s *deviceService) AddDeviceProfile(profile models.DeviceProfile) (string, 
 	return res[0].Id, nil
 }
 
-// DeviceProfiles return all managed DeviceProfiles from cache
-func (s *deviceService) DeviceProfiles() []models.DeviceProfile {
+// Profiles return all managed Profiles from cache
+func (s *nodeService) Profiles() []models.Profile {
 	return cache.Profiles().All()
 }
 
 // GetProfileByName returns the Profile by its name if it exists in the cache, or returns an error.
-func (s *deviceService) GetProfileByName(name string) (models.DeviceProfile, error) {
+func (s *nodeService) GetProfileByName(name string) (models.Profile, error) {
 	profile, ok := cache.Profiles().ForName(name)
 	if !ok {
 		msg := fmt.Sprintf("failed to find Profile %s in cache", name)
 		s.lc.Error(msg)
-		return models.DeviceProfile{}, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, msg, nil)
+		return models.Profile{}, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, msg, nil)
 	}
 	return profile, nil
 }
 
-// RemoveDeviceProfileByName removes the specified DeviceProfile by name from the cache and ensures that the
+// RemoveProfileByName removes the specified Profile by name from the cache and ensures that the
 // instance in Core Metadata is also removed.
-func (s *deviceService) RemoveDeviceProfileByName(name string) error {
+func (s *nodeService) RemoveProfileByName(name string) error {
 	profile, ok := cache.Profiles().ForName(name)
 	if !ok {
 		msg := fmt.Sprintf("failed to find Profile %s in cache", name)
@@ -74,7 +74,7 @@ func (s *deviceService) RemoveDeviceProfileByName(name string) error {
 
 	s.lc.Debugf("Removing managed Profile %s", profile.Name)
 	ctx := context.WithValue(context.Background(), common.CorrelationHeader, uuid.NewString()) // nolint:staticcheck
-	_, err := container.DeviceProfileClientFrom(s.dic.Get).DeleteByName(ctx, name)
+	_, err := container.ProfileClientFrom(s.dic.Get).DeleteByName(ctx, name)
 	if err != nil {
 		s.lc.Errorf("failed to delete Profile %s in Core Metadata", name)
 		return err
@@ -84,9 +84,9 @@ func (s *deviceService) RemoveDeviceProfileByName(name string) error {
 	return err
 }
 
-// UpdateDeviceProfile updates the DeviceProfile in the cache and ensures that the
+// UpdateProfile updates the Profile in the cache and ensures that the
 // copy in Core Metadata is also updated.
-func (s *deviceService) UpdateDeviceProfile(profile models.DeviceProfile) error {
+func (s *nodeService) UpdateProfile(profile models.Profile) error {
 	_, ok := cache.Profiles().ForName(profile.Name)
 	if !ok {
 		msg := fmt.Sprintf("failed to find Profile %s in cache", profile.Name)
@@ -95,9 +95,9 @@ func (s *deviceService) UpdateDeviceProfile(profile models.DeviceProfile) error 
 	}
 
 	s.lc.Debugf("Updating managed Profile %s", profile.Name)
-	req := requests.NewDeviceProfileRequest(dtos.FromDeviceProfileModelToDTO(profile))
+	req := requests.NewProfileRequest(dtos.FromProfileModelToDTO(profile))
 	ctx := context.WithValue(context.Background(), common.CorrelationHeader, uuid.NewString()) // nolint:staticcheck
-	_, err := container.DeviceProfileClientFrom(s.dic.Get).Update(ctx, []requests.DeviceProfileRequest{req})
+	_, err := container.ProfileClientFrom(s.dic.Get).Update(ctx, []requests.ProfileRequest{req})
 	if err != nil {
 		s.lc.Errorf("failed to update Profile %s in Core Metadata: %v", profile.Name, err)
 		return err
@@ -106,32 +106,32 @@ func (s *deviceService) UpdateDeviceProfile(profile models.DeviceProfile) error 
 	return err
 }
 
-// DeviceCommand retrieves the specific DeviceCommand instance from cache according to
-// the Device name and Command name
-func (s *deviceService) DeviceCommand(deviceName string, commandName string) (models.DeviceCommand, bool) {
-	device, ok := cache.Devices().ForName(deviceName)
+// Command retrieves the specific Command instance from cache according to
+// the Node name and Command name
+func (s *nodeService) Command(nodeName string, commandName string) (models.Command, bool) {
+	node, ok := cache.Nodes().ForName(nodeName)
 	if !ok {
-		s.lc.Errorf("failed to find device %s in cache", deviceName)
-		return models.DeviceCommand{}, false
+		s.lc.Errorf("failed to find node %s in cache", nodeName)
+		return models.Command{}, false
 	}
 
-	dc, ok := cache.Profiles().DeviceCommand(device.ProfileName, commandName)
+	dc, ok := cache.Profiles().Command(node.ProfileName, commandName)
 	if !ok {
 		return dc, false
 	}
 	return dc, true
 }
 
-// DeviceResource retrieves the specific DeviceResource instance from cache according to
-// the Device name and Device Resource name
-func (s *deviceService) DeviceResource(deviceName string, deviceResource string) (models.DeviceResource, bool) {
-	device, ok := cache.Devices().ForName(deviceName)
+// Resource retrieves the specific Resource instance from cache according to
+// the Node name and Node Resource name
+func (s *nodeService) Resource(nodeName string, resource string) (models.Resource, bool) {
+	node, ok := cache.Nodes().ForName(nodeName)
 	if !ok {
-		s.lc.Errorf("failed to find device %s in cache", deviceName)
-		return models.DeviceResource{}, false
+		s.lc.Errorf("failed to find node %s in cache", nodeName)
+		return models.Resource{}, false
 	}
 
-	dr, ok := cache.Profiles().DeviceResource(device.ProfileName, deviceResource)
+	dr, ok := cache.Profiles().Resource(node.ProfileName, resource)
 	if !ok {
 		return dr, false
 	}

@@ -9,10 +9,10 @@ package models
 
 // CommandRequest is the struct for requesting a command to ProtocolDrivers
 type CommandRequest struct {
-	// DeviceResourceName is the name of Device Resource for this command
-	DeviceResourceName string
-	// Attributes is a key/value map to represent the attributes of the Device Resource
+	// ResourceName is the name of Node Resource for this command
+	ResourceName string
+	// Attributes is a key/value map to represent the attributes of the Node Resource
 	Attributes map[string]interface{}
-	// Type is the data type of the Device Resource
+	// Type is the data type of the Node Resource
 	Type string
 }

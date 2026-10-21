@@ -18,7 +18,7 @@ const (
 // SDKVersion indicates the version of the SDK - will be overwritten by build
 var SDKVersion string = "0.0.0"
 
-// ServiceVersion indicates the version of the device service itself, not the SDK - will be overwritten by build
+// ServiceVersion indicates the version of the node service itself, not the SDK - will be overwritten by build
 var ServiceVersion string = "0.0.0"
 
 // contextKey is a custom type used to represent the context header key, rather than using a plain string directly.

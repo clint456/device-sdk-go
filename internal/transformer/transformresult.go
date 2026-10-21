@@ -16,8 +16,8 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 )
 
 const (
@@ -32,7 +32,7 @@ const (
 )
 
 // TransformReadResult performs the data transformation on outgoing data
-// the outgoing data transformations order can refer to https://docs.edgexfoundry.org/4.0/design/adr/device-service/0011-DeviceService-Rest-API/#data-transformations
+// the outgoing data transformations order can refer to https://docs.edgexfoundry.org/4.0/design/adr/node-service/0011-NodeService-Rest-API/#data-transformations
 func TransformReadResult(cv *sdkModels.CommandValue, pv models.ResourceProperties) errors.EdgeX {
 	if !isNumericValueType(cv) {
 		return nil
@@ -41,7 +41,7 @@ func TransformReadResult(cv *sdkModels.CommandValue, pv models.ResourcePropertie
 	if err != nil {
 		return errors.NewCommonEdgeXWrapper(err)
 	} else if res {
-		errMSg := fmt.Sprintf("NaN error for DeviceResource %s", cv.DeviceResourceName)
+		errMSg := fmt.Sprintf("NaN error for Resource %s", cv.ResourceName)
 		return errors.NewCommonEdgeX(errors.KindNaNError, errMSg, nil)
 	}
 
@@ -494,12 +494,12 @@ func commandValueForTransform(cv *sdkModels.CommandValue) (interface{}, errors.E
 func checkAssertion(
 	cv *sdkModels.CommandValue,
 	assertion string,
-	deviceName string,
+	nodeName string,
 	lc logger.LoggingClient,
-	dc interfaces.DeviceClient) errors.EdgeX {
+	dc interfaces.NodeClient) errors.EdgeX {
 	if assertion != "" && cv.ValueToString() != assertion {
-		go sdkCommon.UpdateOperatingState(deviceName, models.Down, lc, dc)
-		errMsg := fmt.Sprintf("Assertion failed for DeviceResource %s, with value %s", cv.DeviceResourceName, cv.ValueToString())
+		go sdkCommon.UpdateOperatingState(nodeName, models.Down, lc, dc)
+		errMsg := fmt.Sprintf("Assertion failed for Resource %s, with value %s", cv.ResourceName, cv.ValueToString())
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, nil)
 	}
 	return nil
@@ -511,7 +511,7 @@ func mapCommandValue(value *sdkModels.CommandValue, mappings map[string]string) 
 
 	newValue, ok := mappings[value.ValueToString()]
 	if ok {
-		result, err = sdkModels.NewCommandValue(value.DeviceResourceName, common.ValueTypeString, newValue)
+		result, err = sdkModels.NewCommandValue(value.ResourceName, common.ValueTypeString, newValue)
 		if err != nil {
 			return nil, false
 		}

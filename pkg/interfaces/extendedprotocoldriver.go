@@ -7,13 +7,13 @@ import (
 	model "github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 )
 
-// ExtendedProtocolDriver is a low-level device-specific interface implemented
-// by device services that support extended ProtocolDriver features.
+// ExtendedProtocolDriver is a low-level node-specific interface implemented
+// by node services that support extended ProtocolDriver features.
 type ExtendedProtocolDriver interface {
-	// ProfileScan triggers specific device to discover device profile.
-	ProfileScan(req requests.ProfileScanRequest) (model.DeviceProfile, error)
-	// StopDeviceDiscovery stops the ongoing device discovery process.
-	StopDeviceDiscovery(options map[string]any)
-	// StopProfileScan stops the ongoing device profile scan process for a specific device.
-	StopProfileScan(deviceName string, options map[string]any)
+	// ProfileScan triggers specific node to discover node profile.
+	ProfileScan(req requests.ProfileScanRequest) (model.Profile, error)
+	// StopNodeDiscovery stops the ongoing node discovery process.
+	StopNodeDiscovery(options map[string]any)
+	// StopProfileScan stops the ongoing node profile scan process for a specific node.
+	StopProfileScan(nodeName string, options map[string]any)
 }

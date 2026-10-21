@@ -1,10 +1,10 @@
 API changes from v2
 
-* Remove /callback/device, /callback/device/name/{name} endpoints
-* Change /device/name/{name}/{command} ds-pushevent and ds-returnevent parameter values to true/false
+* Remove /callback/node, /callback/node/name/{name} endpoints
+* Change /node/name/{name}/{command} ds-pushevent and ds-returnevent parameter values to true/false
 * Remove /callback/profile endpoints
 * Remove /callback/watcher endpoints
 * Remove /callback/service endpoints
-* Remove /validate/device endpoints
+* Remove /validate/node endpoints
 * Rename path on SecretRequest to secretName
-* Rename the NewDeviceRequest to DeviceValidationRequest, and add "tags" and "properties" fields into the schema of DeviceValidationRequest
+* Rename the NewNodeRequest to NodeValidationRequest, and add "tags" and "properties" fields into the schema of NodeValidationRequest

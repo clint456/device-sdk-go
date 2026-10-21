@@ -13,14 +13,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/controller/http/correlation"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/utils"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces"
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/common"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/controller/http/correlation"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/utils"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces"
 )
 
 type discoveryLocker struct {
@@ -34,7 +34,7 @@ func DiscoveryWrapper(driver interfaces.ProtocolDriver, ctx context.Context, dic
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	locker.mux.Lock()
 	if locker.busy {
-		lc.Info("another device discovery process is currently running")
+		lc.Info("another node discovery process is currently running")
 		locker.mux.Unlock()
 		return
 	}
@@ -45,7 +45,7 @@ func DiscoveryWrapper(driver interfaces.ProtocolDriver, ctx context.Context, dic
 	if len(requestId) == 0 {
 		requestId = uuid.NewString()
 		ctx = context.WithValue(ctx, common.CorrelationHeader, requestId) // nolint: staticcheck
-		lc.Debugf("device discovery correlation id is empty, set it to %s", requestId)
+		lc.Debugf("node discovery correlation id is empty, set it to %s", requestId)
 	}
 	dic.Update(di.ServiceConstructorMap{
 		container.DiscoveryRequestIdName: func(get di.Get) any {
@@ -53,15 +53,15 @@ func DiscoveryWrapper(driver interfaces.ProtocolDriver, ctx context.Context, dic
 		},
 	})
 
-	utils.PublishDeviceDiscoveryProgressSystemEvent(requestId, 0, 0, "", ctx, dic)
+	utils.PublishNodeDiscoveryProgressSystemEvent(requestId, 0, 0, "", ctx, dic)
 	lc.Debugf("protocol discovery triggered with correlation id: %s", requestId)
 	err := driver.Discover()
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to trigger protocol discovery with correlation id: %s, err: %s", requestId, err.Error())
-		utils.PublishDeviceDiscoveryProgressSystemEvent(requestId, -1, 0, errMsg, ctx, dic)
+		utils.PublishNodeDiscoveryProgressSystemEvent(requestId, -1, 0, errMsg, ctx, dic)
 		lc.Error(errMsg)
 	} else {
-		utils.PublishDeviceDiscoveryProgressSystemEvent(requestId, 100, 0, "", ctx, dic)
+		utils.PublishNodeDiscoveryProgressSystemEvent(requestId, 100, 0, "", ctx, dic)
 	}
 
 	// ReleaseLock
@@ -75,11 +75,11 @@ func DiscoveryWrapper(driver interfaces.ProtocolDriver, ctx context.Context, dic
 	locker.mux.Unlock()
 }
 
-func StopDeviceDiscovery(dic *di.Container, requestId string, options map[string]any) errors.EdgeX {
+func StopNodeDiscovery(dic *di.Container, requestId string, options map[string]any) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	extdriver := container.ExtendedProtocolDriverFrom(dic.Get)
 	if extdriver == nil {
-		return errors.NewCommonEdgeX(errors.KindNotImplemented, "Stop device discovery is not implemented", nil)
+		return errors.NewCommonEdgeX(errors.KindNotImplemented, "Stop node discovery is not implemented", nil)
 	}
 
 	workingId := container.DiscoveryRequestIdFrom(dic.Get)
@@ -88,13 +88,13 @@ func StopDeviceDiscovery(dic *di.Container, requestId string, options map[string
 		return nil
 	}
 	if len(requestId) != 0 && requestId != workingId {
-		lc.Debugf("failed to stop device discovery with request id %s: current working request id is %s", requestId, workingId)
+		lc.Debugf("failed to stop node discovery with request id %s: current working request id is %s", requestId, workingId)
 		return errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, "There is no auto discovery process running with the requestId", nil)
 	}
 
-	lc.Debugf("Stopping device discovery – %s", workingId)
-	extdriver.StopDeviceDiscovery(options)
-	lc.Debugf("Device discovery – %s stop signal is sent", workingId)
+	lc.Debugf("Stopping node discovery – %s", workingId)
+	extdriver.StopNodeDiscovery(options)
+	lc.Debugf("Node discovery – %s stop signal is sent", workingId)
 
 	return nil
 }

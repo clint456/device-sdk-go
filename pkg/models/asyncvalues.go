@@ -6,9 +6,9 @@
 
 package models
 
-// AsyncValues is the struct for sending Device readings asynchronously via ProtocolDrivers
+// AsyncValues is the struct for sending Node readings asynchronously via ProtocolDrivers
 type AsyncValues struct {
-	DeviceName    string
+	NodeName      string
 	SourceName    string
 	CommandValues []*CommandValue
 }

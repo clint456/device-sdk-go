@@ -1,7 +1,7 @@
-deviceList:
-  - name: Simple-Device02
-    profileName: Simple-Device2
-    description: Example of Simple Device
+nodeList:
+  - name: Simple-Node02
+    profileName: Simple-Node2
+    description: Example of Simple Node
     labels:
       - industrial
     protocols:

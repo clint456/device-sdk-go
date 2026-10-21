@@ -30,12 +30,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces/mocks"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces/mocks"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 
 	"github.com/labstack/echo/v4"
 )
@@ -44,10 +44,10 @@ const (
 	testService = "test-service"
 	testProfile = "test-profile"
 
-	testDevice        = "test-device"
-	lockedDevice      = "locked-device"
-	downedDevice      = "down-device"
-	driverErrorDevice = "driver-device"
+	testNode        = "test-node"
+	lockedNode      = "locked-node"
+	downedNode      = "down-node"
+	driverErrorNode = "driver-node"
 
 	testCommand      = "test-command"
 	readOnlyCommand  = "ro-command"
@@ -63,43 +63,43 @@ const (
 )
 
 func mockDic() *di.Container {
-	devices := []dtos.Device{
-		dtos.Device{
-			Name:           testDevice,
+	nodes := []dtos.Node{
+		dtos.Node{
+			Name:           testNode,
 			AdminState:     models.Unlocked,
 			OperatingState: models.Up,
 			ServiceName:    testService,
 			ProfileName:    testProfile,
 		},
-		dtos.Device{
-			Name:           lockedDevice,
+		dtos.Node{
+			Name:           lockedNode,
 			AdminState:     models.Locked,
 			OperatingState: models.Up,
 			ServiceName:    testService,
 			ProfileName:    testProfile,
 		},
-		dtos.Device{
-			Name:           downedDevice,
+		dtos.Node{
+			Name:           downedNode,
 			AdminState:     models.Unlocked,
 			OperatingState: models.Down,
 			ServiceName:    testService,
 			ProfileName:    testProfile,
 		},
-		dtos.Device{
-			Name:           driverErrorDevice,
+		dtos.Node{
+			Name:           driverErrorNode,
 			AdminState:     models.Unlocked,
 			OperatingState: models.Unlocked,
 			ServiceName:    testService,
 			ProfileName:    testProfile,
 		},
 	}
-	deviceResponse := responses.NewMultiDevicesResponse("", "", http.StatusOK, 4, devices)
-	profile := dtos.DeviceProfile{
-		DeviceProfileBasicInfo: dtos.DeviceProfileBasicInfo{
+	nodeResponse := responses.NewMultiNodesResponse("", "", http.StatusOK, 4, nodes)
+	profile := dtos.Profile{
+		ProfileBasicInfo: dtos.ProfileBasicInfo{
 			Name: testProfile,
 		},
-		DeviceResources: []dtos.DeviceResource{
-			dtos.DeviceResource{
+		Resources: []dtos.Resource{
+			dtos.Resource{
 				Name: testResource,
 				Properties: dtos.ResourceProperties{
 					ValueType:    common.ValueTypeString,
@@ -107,21 +107,21 @@ func mockDic() *di.Container {
 					DefaultValue: "default",
 				},
 			},
-			dtos.DeviceResource{
+			dtos.Resource{
 				Name: readOnlyResource,
 				Properties: dtos.ResourceProperties{
 					ValueType: common.ValueTypeString,
 					ReadWrite: common.ReadWrite_R,
 				},
 			},
-			dtos.DeviceResource{
+			dtos.Resource{
 				Name: writeOnlyResource,
 				Properties: dtos.ResourceProperties{
 					ValueType: common.ValueTypeString,
 					ReadWrite: common.ReadWrite_W,
 				},
 			},
-			dtos.DeviceResource{
+			dtos.Resource{
 				Name: objectResource,
 				Properties: dtos.ResourceProperties{
 					ValueType: common.ValueTypeObject,
@@ -129,48 +129,48 @@ func mockDic() *di.Container {
 				},
 			},
 		},
-		DeviceCommands: []dtos.DeviceCommand{
-			dtos.DeviceCommand{
+		Commands: []dtos.Command{
+			dtos.Command{
 				Name:               testCommand,
 				ReadWrite:          common.ReadWrite_RW,
-				ResourceOperations: []dtos.ResourceOperation{{DeviceResource: testResource, DefaultValue: "default"}},
+				ResourceOperations: []dtos.ResourceOperation{{Resource: testResource, DefaultValue: "default"}},
 			},
-			dtos.DeviceCommand{
+			dtos.Command{
 				Name:               readOnlyCommand,
 				ReadWrite:          common.ReadWrite_R,
-				ResourceOperations: []dtos.ResourceOperation{{DeviceResource: readOnlyResource}},
+				ResourceOperations: []dtos.ResourceOperation{{Resource: readOnlyResource}},
 			},
-			dtos.DeviceCommand{
+			dtos.Command{
 				Name:               writeOnlyCommand,
 				ReadWrite:          common.ReadWrite_W,
-				ResourceOperations: []dtos.ResourceOperation{{DeviceResource: writeOnlyResource}},
+				ResourceOperations: []dtos.ResourceOperation{{Resource: writeOnlyResource}},
 			},
-			dtos.DeviceCommand{
+			dtos.Command{
 				Name:               exceedCommand,
 				ReadWrite:          common.ReadWrite_RW,
-				ResourceOperations: []dtos.ResourceOperation{{DeviceResource: testResource}, {DeviceResource: testResource}},
+				ResourceOperations: []dtos.ResourceOperation{{Resource: testResource}, {Resource: testResource}},
 			},
 		},
 	}
-	profileResponse := responses.NewDeviceProfileResponse("", "", http.StatusOK, profile)
+	profileResponse := responses.NewProfileResponse("", "", http.StatusOK, profile)
 	provisionWatcherResponse := responses.NewMultiProvisionWatchersResponse("", "", http.StatusOK, 0, nil)
 	commandValue := &sdkModels.CommandValue{
-		DeviceResourceName: testResource,
-		Type:               common.ValueTypeString,
-		Value:              "test",
+		ResourceName: testResource,
+		Type:         common.ValueTypeString,
+		Value:        "test",
 	}
 
-	mockDeviceClient := &clientMocks.DeviceClient{}
-	mockDeviceClient.On("DevicesByServiceName", context.Background(), testService, 0, -1).Return(deviceResponse, nil)
-	mockDeviceProfileClient := &clientMocks.DeviceProfileClient{}
-	mockDeviceProfileClient.On("DeviceProfileByName", context.Background(), testProfile).Return(profileResponse, nil)
+	mockNodeClient := &clientMocks.NodeClient{}
+	mockNodeClient.On("NodesByServiceName", context.Background(), testService, 0, -1).Return(nodeResponse, nil)
+	mockProfileClient := &clientMocks.ProfileClient{}
+	mockProfileClient.On("ProfileByName", context.Background(), testProfile).Return(profileResponse, nil)
 	mockProvisionWatcherClient := &clientMocks.ProvisionWatcherClient{}
 	mockProvisionWatcherClient.On("ProvisionWatchersByServiceName", context.Background(), testService, 0, -1).Return(provisionWatcherResponse, nil)
 	mockDriver := &mocks.ProtocolDriver{}
-	mockDriver.On("HandleReadCommands", testDevice, mock.Anything, mock.Anything).Return([]*sdkModels.CommandValue{commandValue}, nil)
-	mockDriver.On("HandleReadCommands", driverErrorDevice, mock.Anything, mock.Anything).Return(nil, errors.New("ProtocolDriver returned error"))
-	mockDriver.On("HandleWriteCommands", testDevice, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	mockDriver.On("HandleWriteCommands", driverErrorDevice, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("ProtocolDriver returned error"))
+	mockDriver.On("HandleReadCommands", testNode, mock.Anything, mock.Anything).Return([]*sdkModels.CommandValue{commandValue}, nil)
+	mockDriver.On("HandleReadCommands", driverErrorNode, mock.Anything, mock.Anything).Return(nil, errors.New("ProtocolDriver returned error"))
+	mockDriver.On("HandleWriteCommands", testNode, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mockDriver.On("HandleWriteCommands", driverErrorNode, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("ProtocolDriver returned error"))
 
 	mockMetricsManager := &bootstrapMocks.MetricsManager{}
 	mockMetricsManager.On("Register", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -179,7 +179,7 @@ func mockDic() *di.Container {
 	dic := di.NewContainer(di.ServiceConstructorMap{
 		container.ConfigurationName: func(get di.Get) any {
 			return &config.ConfigurationStruct{
-				Device: config.DeviceInfo{
+				Node: config.NodeInfo{
 					MaxCmdOps: 1,
 				},
 			}
@@ -187,11 +187,11 @@ func mockDic() *di.Container {
 		bootstrapContainer.LoggingClientInterfaceName: func(get di.Get) any {
 			return logger.NewMockClient()
 		},
-		bootstrapContainer.DeviceClientName: func(get di.Get) any {
-			return mockDeviceClient
+		bootstrapContainer.NodeClientName: func(get di.Get) any {
+			return mockNodeClient
 		},
-		bootstrapContainer.DeviceProfileClientName: func(get di.Get) any {
-			return mockDeviceProfileClient
+		bootstrapContainer.ProfileClientName: func(get di.Get) any {
+			return mockProfileClient
 		},
 		bootstrapContainer.ProvisionWatcherClientName: func(get di.Get) any {
 			return mockProvisionWatcherClient
@@ -199,8 +199,8 @@ func mockDic() *di.Container {
 		container.ProtocolDriverName: func(get di.Get) any {
 			return mockDriver
 		},
-		container.DeviceServiceName: func(get di.Get) any {
-			return &models.DeviceService{
+		container.NodeServiceName: func(get di.Get) any {
+			return &models.NodeService{
 				Name:       testService,
 				AdminState: models.Unlocked,
 			}
@@ -228,33 +228,33 @@ func TestRestController_GetCommand(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		deviceName         string
+		nodeName           string
 		commandName        string
 		expectedStatusCode int
 	}{
-		{"valid - read device resource", testDevice, testResource, http.StatusOK},
-		{"valid - read device command", testDevice, testCommand, http.StatusOK},
-		{"valid - read regex device resource", testDevice, testRegexResource, http.StatusOK},
-		{"invalid - device name parameter is empty", "", testResource, http.StatusBadRequest},
-		{"invalid - command is empty", testDevice, "", http.StatusBadRequest},
-		{"invalid - device name not found", "notFound", testCommand, http.StatusNotFound},
-		{"invalid - command name not found", testDevice, "notFound", http.StatusNotFound},
-		{"invalid - device is LOCKED", lockedDevice, testResource, http.StatusLocked},
-		{"invalid - device OperatingState is DOWN", downedDevice, testResource, http.StatusLocked},
-		{"invalid - device resource is write-only", testDevice, writeOnlyResource, http.StatusMethodNotAllowed},
-		{"invalid - device command is write-only", testDevice, writeOnlyCommand, http.StatusMethodNotAllowed},
-		{"invalid - device command resource operations exceed MaxCmdOps", testDevice, exceedCommand, http.StatusInternalServerError},
-		{"invalid - error in ProtocolDriver implementation", driverErrorDevice, testResource, http.StatusInternalServerError},
+		{"valid - read node resource", testNode, testResource, http.StatusOK},
+		{"valid - read node command", testNode, testCommand, http.StatusOK},
+		{"valid - read regex node resource", testNode, testRegexResource, http.StatusOK},
+		{"invalid - node name parameter is empty", "", testResource, http.StatusBadRequest},
+		{"invalid - command is empty", testNode, "", http.StatusBadRequest},
+		{"invalid - node name not found", "notFound", testCommand, http.StatusNotFound},
+		{"invalid - command name not found", testNode, "notFound", http.StatusNotFound},
+		{"invalid - node is LOCKED", lockedNode, testResource, http.StatusLocked},
+		{"invalid - node OperatingState is DOWN", downedNode, testResource, http.StatusLocked},
+		{"invalid - node resource is write-only", testNode, writeOnlyResource, http.StatusMethodNotAllowed},
+		{"invalid - node command is write-only", testNode, writeOnlyCommand, http.StatusMethodNotAllowed},
+		{"invalid - node command resource operations exceed MaxCmdOps", testNode, exceedCommand, http.StatusInternalServerError},
+		{"invalid - error in ProtocolDriver implementation", driverErrorNode, testResource, http.StatusInternalServerError},
 	}
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, common.ApiDeviceNameCommandNameRoute, http.NoBody)
+			req := httptest.NewRequest(http.MethodGet, common.ApiNodeNameCommandNameRoute, http.NoBody)
 
 			// Act
 			recorder := httptest.NewRecorder()
 			c := e.NewContext(req, recorder)
 			c.SetParamNames(common.Name, common.Command)
-			c.SetParamValues(testCase.deviceName, testCase.commandName)
+			c.SetParamValues(testCase.nodeName, testCase.commandName)
 
 			err := controller.GetCommand(c)
 			assert.NoError(t, err)
@@ -280,8 +280,8 @@ func TestRestController_GetCommand_ServiceLocked(t *testing.T) {
 	e := echo.New()
 	dic := mockDic()
 	dic.Update(di.ServiceConstructorMap{
-		container.DeviceServiceName: func(get di.Get) any {
-			return &models.DeviceService{
+		container.NodeServiceName: func(get di.Get) any {
+			return &models.NodeService{
 				Name:       testService,
 				AdminState: models.Locked,
 			}
@@ -294,13 +294,13 @@ func TestRestController_GetCommand_ServiceLocked(t *testing.T) {
 	controller := NewRestController(e, dic, testService)
 	assert.NotNil(t, controller)
 
-	req := httptest.NewRequest(http.MethodGet, common.ApiDeviceNameCommandNameRoute, http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, common.ApiNodeNameCommandNameRoute, http.NoBody)
 
 	// Act
 	recorder := httptest.NewRecorder()
 	c := e.NewContext(req, recorder)
 	c.SetParamNames(common.Name, common.Command)
-	c.SetParamValues(testDevice, testResource)
+	c.SetParamValues(testNode, testResource)
 	err := controller.GetCommand(c)
 	assert.NoError(t, err)
 
@@ -325,7 +325,7 @@ func TestRestController_GetCommand_ReturnEvent(t *testing.T) {
 	controller := NewRestController(e, dic, testService)
 	assert.NotNil(t, controller)
 
-	req := httptest.NewRequest(http.MethodGet, common.ApiDeviceNameCommandNameRoute, http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, common.ApiNodeNameCommandNameRoute, http.NoBody)
 
 	query := req.URL.Query()
 	query.Add("ds-returnevent", common.ValueFalse)
@@ -334,7 +334,7 @@ func TestRestController_GetCommand_ReturnEvent(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c := e.NewContext(req, recorder)
 	c.SetParamNames(common.Name, common.Command)
-	c.SetParamValues(testDevice, testResource)
+	c.SetParamValues(testNode, testResource)
 	err := controller.GetCommand(c)
 	assert.NoError(t, err)
 
@@ -360,28 +360,28 @@ func TestRestController_SetCommand(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		deviceName         string
+		nodeName           string
 		commandName        string
 		request            map[string]any
 		expectedStatusCode int
 	}{
-		{"valid - device resource", testDevice, testResource, validRequest, http.StatusOK},
-		{"valid - write-only device resource", testDevice, writeOnlyResource, validRequest, http.StatusOK},
-		{"valid - device resource not specified in request body but default value provided", testDevice, testResource, invalidRequest, http.StatusOK},
-		{"valid - device command", testDevice, testCommand, validRequest, http.StatusOK},
-		{"valid - write-only device command", testDevice, writeOnlyCommand, validRequest, http.StatusOK},
-		{"valid - device command not specified in request body but default value provided", testDevice, testCommand, invalidRequest, http.StatusOK},
-		{"invalid - device name parameter is empty", "", testResource, validRequest, http.StatusBadRequest},
-		{"invalid - command is empty", testDevice, "", validRequest, http.StatusBadRequest},
-		{"invalid - device name not found", "notFound", testResource, validRequest, http.StatusNotFound},
-		{"invalid - command name not found", testDevice, "notFound", validRequest, http.StatusNotFound},
-		{"invalid - device is LOCKED", lockedDevice, testResource, validRequest, http.StatusLocked},
-		{"invalid - device OperatingState is DOWN", downedDevice, testResource, validRequest, http.StatusLocked},
-		{"invalid - device resource is read-only", testDevice, readOnlyResource, validRequest, http.StatusMethodNotAllowed},
-		{"invalid - device command is read-only", testDevice, readOnlyCommand, validRequest, http.StatusMethodNotAllowed},
-		{"invalid - device command resource operations exceed MaxCmdOps", testDevice, exceedCommand, validRequest, http.StatusInternalServerError},
-		{"invalid - write empty string to non string device resource", testDevice, objectResource, emptyValueRequest, http.StatusBadRequest},
-		{"invalid - error in ProtocolDriver implementation", driverErrorDevice, testResource, validRequest, http.StatusInternalServerError},
+		{"valid - node resource", testNode, testResource, validRequest, http.StatusOK},
+		{"valid - write-only node resource", testNode, writeOnlyResource, validRequest, http.StatusOK},
+		{"valid - node resource not specified in request body but default value provided", testNode, testResource, invalidRequest, http.StatusOK},
+		{"valid - node command", testNode, testCommand, validRequest, http.StatusOK},
+		{"valid - write-only node command", testNode, writeOnlyCommand, validRequest, http.StatusOK},
+		{"valid - node command not specified in request body but default value provided", testNode, testCommand, invalidRequest, http.StatusOK},
+		{"invalid - node name parameter is empty", "", testResource, validRequest, http.StatusBadRequest},
+		{"invalid - command is empty", testNode, "", validRequest, http.StatusBadRequest},
+		{"invalid - node name not found", "notFound", testResource, validRequest, http.StatusNotFound},
+		{"invalid - command name not found", testNode, "notFound", validRequest, http.StatusNotFound},
+		{"invalid - node is LOCKED", lockedNode, testResource, validRequest, http.StatusLocked},
+		{"invalid - node OperatingState is DOWN", downedNode, testResource, validRequest, http.StatusLocked},
+		{"invalid - node resource is read-only", testNode, readOnlyResource, validRequest, http.StatusMethodNotAllowed},
+		{"invalid - node command is read-only", testNode, readOnlyCommand, validRequest, http.StatusMethodNotAllowed},
+		{"invalid - node command resource operations exceed MaxCmdOps", testNode, exceedCommand, validRequest, http.StatusInternalServerError},
+		{"invalid - write empty string to non string node resource", testNode, objectResource, emptyValueRequest, http.StatusBadRequest},
+		{"invalid - error in ProtocolDriver implementation", driverErrorNode, testResource, validRequest, http.StatusInternalServerError},
 	}
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -389,7 +389,7 @@ func TestRestController_SetCommand(t *testing.T) {
 			require.NoError(t, err)
 
 			reader := strings.NewReader(string(jsonData))
-			req := httptest.NewRequest(http.MethodPut, common.ApiDeviceNameCommandNameRoute, reader)
+			req := httptest.NewRequest(http.MethodPut, common.ApiNodeNameCommandNameRoute, reader)
 
 			var wg sync.WaitGroup
 			if testCase.commandName != writeOnlyCommand && testCase.commandName != writeOnlyResource {
@@ -411,7 +411,7 @@ func TestRestController_SetCommand(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			c := e.NewContext(req, recorder)
 			c.SetParamNames(common.Name, common.Command)
-			c.SetParamValues(testCase.deviceName, testCase.commandName)
+			c.SetParamValues(testCase.nodeName, testCase.commandName)
 			err = controller.SetCommand(c)
 			assert.NoError(t, err)
 
@@ -441,8 +441,8 @@ func TestRestController_SetCommand_ServiceLocked(t *testing.T) {
 	e := echo.New()
 	dic := mockDic()
 	dic.Update(di.ServiceConstructorMap{
-		container.DeviceServiceName: func(get di.Get) any {
-			return &models.DeviceService{
+		container.NodeServiceName: func(get di.Get) any {
+			return &models.NodeService{
 				Name:       testService,
 				AdminState: models.Locked,
 			}
@@ -460,13 +460,13 @@ func TestRestController_SetCommand_ServiceLocked(t *testing.T) {
 	require.NoError(t, err)
 
 	reader := strings.NewReader(string(jsonData))
-	req := httptest.NewRequest(http.MethodPut, common.ApiDeviceNameCommandNameRoute, reader)
+	req := httptest.NewRequest(http.MethodPut, common.ApiNodeNameCommandNameRoute, reader)
 
 	// Act
 	recorder := httptest.NewRecorder()
 	c := e.NewContext(req, recorder)
 	c.SetParamNames(common.Name, common.Command)
-	c.SetParamValues(testDevice, testResource)
+	c.SetParamValues(testNode, testResource)
 	err = controller.SetCommand(c)
 	assert.NoError(t, err)
 

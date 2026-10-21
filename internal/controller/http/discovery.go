@@ -16,32 +16,32 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/application"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/autodiscovery"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/controller/http/correlation"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/common"
 	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/common"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/requests"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/application"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/autodiscovery"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/controller/http/correlation"
 )
 
 func (c *RestController) Discovery(e echo.Context) error {
 	request := e.Request()
 	writer := e.Response()
 	ctx := request.Context()
-	ds := container.DeviceServiceFrom(c.dic.Get)
+	ds := container.NodeServiceFrom(c.dic.Get)
 	if ds.AdminState == models.Locked {
 		err := errors.NewCommonEdgeX(errors.KindServiceLocked, "service locked", nil)
 		return c.sendEdgexError(writer, request, err, common.ApiDiscoveryRoute)
 	}
 
 	configuration := container.ConfigurationFrom(c.dic.Get)
-	if !configuration.Device.Discovery.Enabled {
-		err := errors.NewCommonEdgeX(errors.KindServiceUnavailable, "device discovery disabled", nil)
+	if !configuration.Node.Discovery.Enabled {
+		err := errors.NewCommonEdgeX(errors.KindServiceUnavailable, "node discovery disabled", nil)
 		return c.sendEdgexError(writer, request, err, common.ApiDiscoveryRoute)
 	}
 
@@ -55,7 +55,7 @@ func (c *RestController) Discovery(e echo.Context) error {
 		c.lc.Infof("Discovery end. Correlation Id: %s", requestId)
 	}()
 
-	response := commonDTO.NewBaseResponse(requestId, "Device Discovery is triggered.", http.StatusAccepted)
+	response := commonDTO.NewBaseResponse(requestId, "Node Discovery is triggered.", http.StatusAccepted)
 	return c.sendResponse(writer, request, common.ApiDiscoveryRoute, response, http.StatusAccepted)
 }
 
@@ -95,18 +95,18 @@ func (c *RestController) ProfileScan(e echo.Context) error {
 	}()
 	b := <-busy
 	if b {
-		edgexErr := errors.NewCommonEdgeX(errors.KindStatusConflict, fmt.Sprintf("Another profile scan process for %s is currently running", req.DeviceName), nil)
+		edgexErr := errors.NewCommonEdgeX(errors.KindStatusConflict, fmt.Sprintf("Another profile scan process for %s is currently running", req.NodeName), nil)
 		return c.sendEdgexError(writer, request, edgexErr, common.ApiProfileScanRoute)
 	}
 
-	response := commonDTO.NewBaseResponse(req.RequestId, "Device ProfileScan is triggered.", http.StatusAccepted)
+	response := commonDTO.NewBaseResponse(req.RequestId, "Node ProfileScan is triggered.", http.StatusAccepted)
 	return c.sendResponse(writer, request, common.ApiProfileScanRoute, response, http.StatusAccepted)
 }
 
 func profileScanValidation(request []byte, ctx context.Context, dic *di.Container) (requests.ProfileScanRequest, errors.EdgeX) {
 	var req requests.ProfileScanRequest
-	// check device service AdminState
-	ds := container.DeviceServiceFrom(dic.Get)
+	// check node service AdminState
+	ds := container.NodeServiceFrom(dic.Get)
 	if ds.AdminState == models.Locked {
 		return req, errors.NewCommonEdgeX(errors.KindServiceLocked, "service locked", nil)
 	}
@@ -117,10 +117,10 @@ func profileScanValidation(request []byte, ctx context.Context, dic *di.Containe
 		return req, errors.NewCommonEdgeX(errors.KindContractInvalid, "failed to parse request body", err)
 	}
 
-	// check requested device exists
-	_, exist := cache.Devices().ForName(req.DeviceName)
+	// check requested node exists
+	_, exist := cache.Nodes().ForName(req.NodeName)
 	if !exist {
-		return req, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, fmt.Sprintf("device %s not found", req.DeviceName), nil)
+		return req, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, fmt.Sprintf("node %s not found", req.NodeName), nil)
 	}
 
 	// check profile should not exist
@@ -129,7 +129,7 @@ func profileScanValidation(request []byte, ctx context.Context, dic *di.Containe
 			return req, errors.NewCommonEdgeX(errors.KindStatusConflict, fmt.Sprintf("profile name %s is duplicated", req.ProfileName), nil)
 		}
 	} else {
-		req.ProfileName = fmt.Sprintf("%s_profile_%d", req.DeviceName, time.Now().UnixMilli())
+		req.ProfileName = fmt.Sprintf("%s_profile_%d", req.NodeName, time.Now().UnixMilli())
 	}
 
 	requestId := req.RequestId
@@ -143,7 +143,7 @@ func profileScanValidation(request []byte, ctx context.Context, dic *di.Containe
 			Versionable: commonDTO.NewVersionable(),
 			RequestId:   requestId,
 		},
-		DeviceName:  req.DeviceName,
+		NodeName:    req.NodeName,
 		ProfileName: req.ProfileName,
 		Options:     req.Options,
 	}
@@ -151,7 +151,7 @@ func profileScanValidation(request []byte, ctx context.Context, dic *di.Containe
 	return req, nil
 }
 
-func (c *RestController) StopDeviceDiscovery(e echo.Context) error {
+func (c *RestController) StopNodeDiscovery(e echo.Context) error {
 	request := e.Request()
 	writer := e.Response()
 
@@ -166,7 +166,7 @@ func (c *RestController) StopDeviceDiscovery(e echo.Context) error {
 	for key, vals := range queryParams {
 		options[key] = vals
 	}
-	edgexErr := autodiscovery.StopDeviceDiscovery(c.dic, requestId, options)
+	edgexErr := autodiscovery.StopNodeDiscovery(c.dic, requestId, options)
 	if edgexErr != nil {
 		return c.sendEdgexErrorWithRequestId(writer, request, edgexErr, common.ApiDiscoveryByIdRoute, requestId)
 	}
@@ -180,21 +180,21 @@ func (c *RestController) StopProfileScan(e echo.Context) error {
 	writer := e.Response()
 
 	// URL parameters
-	deviceName := e.Param(common.Name)
+	nodeName := e.Param(common.Name)
 	queryParams, err := url.ParseQuery(request.URL.RawQuery)
 	if err != nil {
 		edgexErr := errors.NewCommonEdgeX(errors.KindServerError, "failed to parse query parameter", err)
-		return c.sendEdgexError(writer, request, edgexErr, common.ApiProfileScanByDeviceNameRoute)
+		return c.sendEdgexError(writer, request, edgexErr, common.ApiProfileScanByNodeNameRoute)
 	}
 	options := make(map[string]any)
 	for key, vals := range queryParams {
 		options[key] = vals
 	}
-	edgexErr := application.StopProfileScan(c.dic, deviceName, options)
+	edgexErr := application.StopProfileScan(c.dic, nodeName, options)
 	if edgexErr != nil {
-		return c.sendEdgexError(writer, request, edgexErr, common.ApiProfileScanByDeviceNameRoute)
+		return c.sendEdgexError(writer, request, edgexErr, common.ApiProfileScanByNodeNameRoute)
 	}
 
 	res := commonDTO.NewBaseResponse("", "", http.StatusOK)
-	return c.sendResponse(writer, request, common.ApiProfileScanByDeviceNameRoute, res, http.StatusOK)
+	return c.sendResponse(writer, request, common.ApiProfileScanByNodeNameRoute, res, http.StatusOK)
 }

@@ -19,11 +19,11 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/requests"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/transformer"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/transformer"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 )
 
 // processAsyncResults processes readings that are pushed from
@@ -35,8 +35,8 @@ import (
 // is greater than or equal to two. Alternatively, we can process
 // AsyncValues one by one in the same order by changing the AsyncBufferSize
 // value to one.
-func (s *deviceService) processAsyncResults(ctx context.Context, dic *di.Container) {
-	working := make(chan bool, s.config.Device.AsyncBufferSize)
+func (s *nodeService) processAsyncResults(ctx context.Context, dic *di.Container) {
+	working := make(chan bool, s.config.Node.AsyncBufferSize)
 	for {
 		select {
 		case <-ctx.Done():
@@ -48,14 +48,14 @@ func (s *deviceService) processAsyncResults(ctx context.Context, dic *di.Contain
 }
 
 // sendAsyncValues convert AsyncValues to event and send the event to CoreData
-func (s *deviceService) sendAsyncValues(acv *sdkModels.AsyncValues, working chan bool, dic *di.Container) {
+func (s *nodeService) sendAsyncValues(acv *sdkModels.AsyncValues, working chan bool, dic *di.Container) {
 	working <- true
 	defer func() {
 		<-working
 	}()
 
-	// Update the LastConnected metric in deviceCache
-	cache.Devices().SetLastConnectedByName(acv.DeviceName)
+	// Update the LastConnected metric in nodeCache
+	cache.Nodes().SetLastConnectedByName(acv.NodeName)
 
 	if len(acv.CommandValues) == 0 {
 		s.lc.Error("Skip sending AsyncValues because the CommandValues is empty.")
@@ -65,14 +65,14 @@ func (s *deviceService) sendAsyncValues(acv *sdkModels.AsyncValues, working chan
 		s.lc.Error("Skip sending AsyncValues because the SourceName is empty.")
 		return
 	}
-	// We can use the first reading's DeviceResourceName as the SourceName
+	// We can use the first reading's ResourceName as the SourceName
 	// when the CommandValues contains only one reading and the AsyncValues's SourceName is empty.
 	if len(acv.CommandValues) == 1 && acv.SourceName == "" {
-		acv.SourceName = acv.CommandValues[0].DeviceResourceName
+		acv.SourceName = acv.CommandValues[0].ResourceName
 	}
 
 	configuration := container.ConfigurationFrom(dic.Get)
-	event, err := transformer.CommandValuesToEventDTO(acv.CommandValues, acv.DeviceName, acv.SourceName, configuration.Device.DataTransform, dic)
+	event, err := transformer.CommandValuesToEventDTO(acv.CommandValues, acv.NodeName, acv.SourceName, configuration.Node.DataTransform, dic)
 	if err != nil {
 		s.lc.Errorf("failed to transform CommandValues to Event: %v", err)
 		return
@@ -81,72 +81,73 @@ func (s *deviceService) sendAsyncValues(acv *sdkModels.AsyncValues, working chan
 	common.SendEvent(event, "", dic)
 }
 
-// processAsyncFilterAndAdd filter and add devices discovered by
-// device service protocol discovery.
-func (s *deviceService) processAsyncFilterAndAdd(ctx context.Context) {
+// processAsyncFilterAndAdd filter and add nodes discovered by
+// node service protocol discovery.
+func (s *nodeService) processAsyncFilterAndAdd(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case devices := <-s.deviceCh:
+		case nodes := <-s.nodeCh:
 			ctx := context.Background()
 			pws := cache.ProvisionWatchers().All()
-			for _, d := range devices {
+			for _, d := range nodes {
 				for _, pw := range pws {
 					if pw.AdminState == models.Locked {
 						s.lc.Debugf("Skip th locked provision watcher %v", pw.Name)
 						continue
 					}
 					if s.checkAllowList(d, pw) && s.checkBlockList(d, pw) {
-						if _, ok := cache.Devices().ForName(d.Name); ok {
-							s.lc.Debugf("Candidate discovered device %s already existed", d.Name)
+						if _, ok := cache.Nodes().ForName(d.Name); ok {
+							s.lc.Debugf("Candidate discovered node %s already existed", d.Name)
 							break
 						}
 
-						s.lc.Infof("Adding discovered device %s to Metadata", d.Name)
-						device := models.Device{
+						s.lc.Infof("Adding discovered node %s to Metadata", d.Name)
+						node := models.Node{
 							Name:           d.Name,
 							Description:    d.Description,
-							ProfileName:    pw.DiscoveredDevice.ProfileName,
+							ProfileName:    pw.DiscoveredNode.ProfileName,
 							Protocols:      d.Protocols,
 							Labels:         d.Labels,
 							ServiceName:    s.serviceKey,
-							AdminState:     pw.DiscoveredDevice.AdminState,
+							AdminState:     pw.DiscoveredNode.AdminState,
 							OperatingState: models.Up,
-							AutoEvents:     pw.DiscoveredDevice.AutoEvents,
-							Properties:     pw.DiscoveredDevice.Properties,
+							Direction:      models.South,
+							AutoEvents:     pw.DiscoveredNode.AutoEvents,
+							Properties:     pw.DiscoveredNode.Properties,
 						}
 
-						req := requests.NewAddDeviceRequest(dtos.FromDeviceModelToDTO(device))
-						_, err := bootstrapContainer.DeviceClientFrom(s.dic.Get).AddWithQueryParams(ctx, []requests.AddDeviceRequest{req},
+						req := requests.NewAddNodeRequest(dtos.FromNodeModelToDTO(node))
+						_, err := bootstrapContainer.NodeClientFrom(s.dic.Get).AddWithQueryParams(ctx, []requests.AddNodeRequest{req},
 							map[string]string{common.BypassValidationQueryParam: contractsCommon.ValueTrue})
 						if err != nil {
-							s.lc.Errorf("failed to create discovered device %s: %v", device.Name, err)
+							s.lc.Errorf("failed to create discovered node %s: %v", node.Name, err)
 						} else {
 							break
 						}
 					}
 				}
 			}
-			s.lc.Debug("Filtered device addition finished")
+			s.lc.Debug("Filtered node addition finished")
 		}
 	}
 }
 
-func (s *deviceService) checkAllowList(d sdkModels.DiscoveredDevice, pw models.ProvisionWatcher) bool {
-	// ignore the device protocol properties name
+func (s *nodeService) checkAllowList(d sdkModels.DiscoveredNode, pw models.ProvisionWatcher) bool {
+	// ignore the node protocol properties name
 	for _, protocol := range d.Protocols {
 		matchedCount := 0
 		for name, regex := range pw.Identifiers {
 			if value, ok := protocol[name]; ok {
 				valueString := fmt.Sprintf("%v", value)
 				if valueString == "" {
-					s.lc.Debugf("Skipping identifier %s, cannot transform %s value '%v' to string type for discovered device %s", name, name, value, d.Name)
+					s.lc.Debugf("Skipping identifier %s, cannot transform %s value '%v' to string type for discovered node %s", name, name, value, d.Name)
 					continue
 				}
 				matched, err := regexp.MatchString(regex, valueString)
 				if !matched || err != nil {
-					s.lc.Debugf("Discovered Device %s %s value '%v' did not match PW identifier: %s", d.Name, name, value, regex)
+					s.lc.Debugf("Discovered Node %s %s value '%v' did not match PW identifier: %s", d.Name, name, value, regex)
 					break
 				}
 				matchedCount += 1
@@ -160,20 +161,20 @@ func (s *deviceService) checkAllowList(d sdkModels.DiscoveredDevice, pw models.P
 	return false
 }
 
-func (s *deviceService) checkBlockList(d sdkModels.DiscoveredDevice, pw models.ProvisionWatcher) bool {
+func (s *nodeService) checkBlockList(d sdkModels.DiscoveredNode, pw models.ProvisionWatcher) bool {
 	// a candidate should match none of the blocking identifiers
 	for name, blacklist := range pw.BlockingIdentifiers {
-		// ignore the device protocol properties name
+		// ignore the node protocol properties name
 		for _, protocol := range d.Protocols {
 			if value, ok := protocol[name]; ok {
 				valueString := fmt.Sprintf("%v", value)
 				if valueString == "" {
-					s.lc.Debugf("Skipping identifier %s, cannot transform %s value '%v' to string type for discovered device %s", name, name, value, d.Name)
+					s.lc.Debugf("Skipping identifier %s, cannot transform %s value '%v' to string type for discovered node %s", name, name, value, d.Name)
 					continue
 				}
 				for _, v := range blacklist {
 					if valueString == v {
-						s.lc.Debugf("Discovered Device %s %s value cannot be %v", d.Name, name, value)
+						s.lc.Debugf("Discovered Node %s %s value cannot be %v", d.Name, name, value)
 						return false
 					}
 				}

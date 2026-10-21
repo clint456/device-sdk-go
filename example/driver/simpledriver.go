@@ -28,20 +28,20 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 	gometrics "github.com/rcrowley/go-metrics"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/example/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/example/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 )
 
 const readCommandsExecutedName = "ReadCommandsExecuted"
 
 type SimpleDriver struct {
-	sdk                  interfaces.DeviceServiceSDK
+	sdk                  interfaces.NodeServiceSDK
 	lc                   logger.LoggingClient
 	stopDiscovery        stopDiscoveryState
 	stopProfileScan      stopProfileScanState
 	asyncCh              chan<- *sdkModels.AsyncValues
-	deviceCh             chan<- []sdkModels.DiscoveredDevice
+	nodeCh               chan<- []sdkModels.DiscoveredNode
 	switchButton         bool
 	xRotation            int32
 	yRotation            int32
@@ -98,13 +98,13 @@ func getImageBytes(imgFile string, buf *bytes.Buffer) error {
 	return nil
 }
 
-// Initialize performs protocol-specific initialization for the device
+// Initialize performs protocol-specific initialization for the node
 // service.
-func (s *SimpleDriver) Initialize(sdk interfaces.DeviceServiceSDK) error {
+func (s *SimpleDriver) Initialize(sdk interfaces.NodeServiceSDK) error {
 	s.sdk = sdk
 	s.lc = sdk.LoggingClient()
 	s.asyncCh = sdk.AsyncValuesChannel()
-	s.deviceCh = sdk.DiscoveredDeviceChannel()
+	s.nodeCh = sdk.DiscoveredNodeChannel()
 	s.serviceConfig = &config.ServiceConfig{}
 	s.counter = map[string]interface{}{
 		"f1": "ABC",
@@ -177,22 +177,22 @@ func (s *SimpleDriver) ProcessCustomConfigChanges(rawWritableConfig interface{})
 	}
 }
 
-// HandleReadCommands triggers a protocol Read operation for the specified device.
-func (s *SimpleDriver) HandleReadCommands(deviceName string, protocols map[string]models.ProtocolProperties, reqs []sdkModels.CommandRequest) (res []*sdkModels.CommandValue, err error) {
-	s.lc.Debugf("SimpleDriver.HandleReadCommands: protocols: %v resource: %v attributes: %v", protocols, reqs[0].DeviceResourceName, reqs[0].Attributes)
+// HandleReadCommands triggers a protocol Read operation for the specified node.
+func (s *SimpleDriver) HandleReadCommands(nodeName string, protocols map[string]models.ProtocolProperties, reqs []sdkModels.CommandRequest) (res []*sdkModels.CommandValue, err error) {
+	s.lc.Debugf("SimpleDriver.HandleReadCommands: protocols: %v resource: %v attributes: %v", protocols, reqs[0].ResourceName, reqs[0].Attributes)
 
 	res = make([]*sdkModels.CommandValue, 0)
 	for _, req := range reqs {
 		var cv *sdkModels.CommandValue
-		switch req.DeviceResourceName {
+		switch req.ResourceName {
 		case "SwitchButton":
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeBool, s.switchButton)
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeBool, s.switchButton)
 		case "Xrotation":
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeInt32, s.xRotation)
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeInt32, s.xRotation)
 		case "Yrotation":
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeInt32, s.yRotation)
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeInt32, s.yRotation)
 		case "Zrotation":
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeInt32, s.zRotation)
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeInt32, s.zRotation)
 		case "Image":
 			// Show a binary/image representation of the switch's on/off value
 			buf := new(bytes.Buffer)
@@ -201,13 +201,13 @@ func (s *SimpleDriver) HandleReadCommands(deviceName string, protocols map[strin
 			} else {
 				err = getImageBytes(s.serviceConfig.SimpleCustom.OffImageLocation, buf)
 			}
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeBinary, buf.Bytes())
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeBinary, buf.Bytes())
 		case "StringArray":
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeStringArray, s.stringArray)
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeStringArray, s.stringArray)
 		case "Uint8Array":
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeUint8Array, []uint8{0, 1, 2})
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeUint8Array, []uint8{0, 1, 2})
 		case "Counter":
-			cv, _ = sdkModels.NewCommandValue(req.DeviceResourceName, common.ValueTypeObject, s.counter)
+			cv, _ = sdkModels.NewCommandValue(req.ResourceName, common.ValueTypeObject, s.counter)
 		}
 
 		res = append(res, cv)
@@ -219,16 +219,16 @@ func (s *SimpleDriver) HandleReadCommands(deviceName string, protocols map[strin
 }
 
 // HandleWriteCommands passes a slice of CommandRequest struct each representing
-// a ResourceOperation for a specific device resource.
+// a ResourceOperation for a specific node resource.
 // Since the commands are actuation commands, params provide parameters for the individual
 // command.
-func (s *SimpleDriver) HandleWriteCommands(deviceName string, protocols map[string]models.ProtocolProperties, reqs []sdkModels.CommandRequest,
+func (s *SimpleDriver) HandleWriteCommands(nodeName string, protocols map[string]models.ProtocolProperties, reqs []sdkModels.CommandRequest,
 	params []*sdkModels.CommandValue) error {
 	var err error
 
 	for i, r := range reqs {
-		s.lc.Debugf("SimpleDriver.HandleWriteCommands: protocols: %v, resource: %v, parameters: %v, attributes: %v", protocols, reqs[i].DeviceResourceName, params[i], reqs[i].Attributes)
-		switch r.DeviceResourceName {
+		s.lc.Debugf("SimpleDriver.HandleWriteCommands: protocols: %v, resource: %v, parameters: %v, attributes: %v", protocols, reqs[i].ResourceName, params[i], reqs[i].Attributes)
+		switch r.ResourceName {
 		case "SwitchButton":
 			if s.switchButton, err = params[i].BoolValue(); err != nil {
 				err := fmt.Errorf("SimpleDriver.HandleWriteCommands; the data type of parameter should be Boolean, parameter: %s", params[0].String())
@@ -288,35 +288,35 @@ func (s *SimpleDriver) Start() error {
 	return nil
 }
 
-// AddDevice is a callback function that is invoked
-// when a new Device associated with this Device Service is added
-func (s *SimpleDriver) AddDevice(deviceName string, protocols map[string]models.ProtocolProperties, adminState models.AdminState) error {
-	s.lc.Debugf("a new Device is added: %s", deviceName)
+// AddNode is a callback function that is invoked
+// when a new Node associated with this Node Service is added
+func (s *SimpleDriver) AddNode(nodeName string, protocols map[string]models.ProtocolProperties, adminState models.AdminState) error {
+	s.lc.Debugf("a new Node is added: %s", nodeName)
 	return nil
 }
 
-// UpdateDevice is a callback function that is invoked
-// when a Device associated with this Device Service is updated
-func (s *SimpleDriver) UpdateDevice(deviceName string, protocols map[string]models.ProtocolProperties, adminState models.AdminState) error {
-	s.lc.Debugf("Device %s is updated", deviceName)
+// UpdateNode is a callback function that is invoked
+// when a Node associated with this Node Service is updated
+func (s *SimpleDriver) UpdateNode(nodeName string, protocols map[string]models.ProtocolProperties, adminState models.AdminState) error {
+	s.lc.Debugf("Node %s is updated", nodeName)
 	return nil
 }
 
-// RemoveDevice is a callback function that is invoked
-// when a Device associated with this Device Service is removed
-func (s *SimpleDriver) RemoveDevice(deviceName string, protocols map[string]models.ProtocolProperties) error {
-	s.lc.Debugf("Device %s is removed", deviceName)
+// RemoveNode is a callback function that is invoked
+// when a Node associated with this Node Service is removed
+func (s *SimpleDriver) RemoveNode(nodeName string, protocols map[string]models.ProtocolProperties) error {
+	s.lc.Debugf("Node %s is removed", nodeName)
 	return nil
 }
 
-// Discover triggers protocol specific device discovery, which is an asynchronous operation.
-// Devices found as part of this discovery operation are written to the channel devices.
+// Discover triggers protocol specific node discovery, which is an asynchronous operation.
+// Nodes found as part of this discovery operation are written to the channel nodes.
 func (s *SimpleDriver) Discover() error {
 	proto := make(map[string]models.ProtocolProperties)
 	proto["other"] = map[string]any{"Address": "simple02", "Port": 301}
 
-	device2 := sdkModels.DiscoveredDevice{
-		Name:        "Simple-Device02",
+	node2 := sdkModels.DiscoveredNode{
+		Name:        "Simple-Node02",
 		Protocols:   proto,
 		Description: "found by discovery",
 		Labels:      []string{"auto-discovery"},
@@ -325,27 +325,27 @@ func (s *SimpleDriver) Discover() error {
 	proto = make(map[string]models.ProtocolProperties)
 	proto["other"] = map[string]any{"Address": "simple03", "Port": 399}
 
-	device3 := sdkModels.DiscoveredDevice{
-		Name:        "Simple-Device03",
+	node3 := sdkModels.DiscoveredNode{
+		Name:        "Simple-Node03",
 		Protocols:   proto,
 		Description: "found by discovery",
 		Labels:      []string{"auto-discovery"},
 	}
 
-	res := []sdkModels.DiscoveredDevice{device2}
+	res := []sdkModels.DiscoveredNode{node2}
 	time.Sleep(time.Duration(s.serviceConfig.SimpleCustom.Writable.DiscoverSleepDurationSecs) * time.Second)
-	s.sdk.PublishDeviceDiscoveryProgressSystemEvent(50, len(res), "")
-	defer s.setStopDeviceDiscovery(false)
-	if !s.getStopDeviceDiscovery() {
+	s.sdk.PublishNodeDiscoveryProgressSystemEvent(50, len(res), "")
+	defer s.setStopNodeDiscovery(false)
+	if !s.getStopNodeDiscovery() {
 		time.Sleep(time.Duration(s.serviceConfig.SimpleCustom.Writable.DiscoverSleepDurationSecs) * time.Second)
-		res = append(res, device3)
+		res = append(res, node3)
 	}
-	s.deviceCh <- res
+	s.nodeCh <- res
 	return nil
 }
 
-func (s *SimpleDriver) ValidateDevice(device models.Device) error {
-	protocol, ok := device.Protocols["other"]
+func (s *SimpleDriver) ValidateNode(node models.Node) error {
+	protocol, ok := node.Protocols["other"]
 	if !ok {
 		return errors.New("missing 'other' protocols")
 	}
@@ -371,48 +371,48 @@ func (s *SimpleDriver) ValidateDevice(device models.Device) error {
 	return nil
 }
 
-func (s *SimpleDriver) ProfileScan(payload requests.ProfileScanRequest) (models.DeviceProfile, error) {
+func (s *SimpleDriver) ProfileScan(payload requests.ProfileScanRequest) (models.Profile, error) {
 	time.Sleep(time.Duration(s.serviceConfig.SimpleCustom.Writable.DiscoverSleepDurationSecs) * time.Second)
 	s.sdk.PublishProfileScanProgressSystemEvent(payload.RequestId, 50, "")
-	if s.getStopProfileScan(payload.DeviceName) {
-		return models.DeviceProfile{}, fmt.Errorf("profile scanning is stopped")
+	if s.getStopProfileScan(payload.NodeName) {
+		return models.Profile{}, fmt.Errorf("profile scanning is stopped")
 	}
 	time.Sleep(time.Duration(s.serviceConfig.SimpleCustom.Writable.DiscoverSleepDurationSecs) * time.Second)
-	return models.DeviceProfile{Name: payload.ProfileName}, nil
+	return models.Profile{Name: payload.ProfileName}, nil
 }
 
-func (s *SimpleDriver) StopDeviceDiscovery(options map[string]any) {
-	s.lc.Debugf("StopDeviceDiscovery called: options=%v", options)
-	s.setStopDeviceDiscovery(true)
+func (s *SimpleDriver) StopNodeDiscovery(options map[string]any) {
+	s.lc.Debugf("StopNodeDiscovery called: options=%v", options)
+	s.setStopNodeDiscovery(true)
 }
 
-func (s *SimpleDriver) StopProfileScan(device string, options map[string]any) {
+func (s *SimpleDriver) StopProfileScan(node string, options map[string]any) {
 	s.lc.Debugf("StopProfileScan called: options=%v", options)
-	s.setStopProfileScan(device, true)
+	s.setStopProfileScan(node, true)
 }
 
-func (s *SimpleDriver) getStopDeviceDiscovery() bool {
+func (s *SimpleDriver) getStopNodeDiscovery() bool {
 	s.stopDiscovery.locker.RLock()
 	defer s.stopDiscovery.locker.RUnlock()
 	return s.stopDiscovery.stop
 }
 
-func (s *SimpleDriver) setStopDeviceDiscovery(stop bool) {
+func (s *SimpleDriver) setStopNodeDiscovery(stop bool) {
 	s.stopDiscovery.locker.Lock()
 	defer s.stopDiscovery.locker.Unlock()
 	s.stopDiscovery.stop = stop
-	s.lc.Debugf("set stopDeviceDiscovery to %v", stop)
+	s.lc.Debugf("set stopNodeDiscovery to %v", stop)
 }
 
-func (s *SimpleDriver) getStopProfileScan(device string) bool {
+func (s *SimpleDriver) getStopProfileScan(node string) bool {
 	s.stopProfileScan.locker.RLock()
 	defer s.stopProfileScan.locker.RUnlock()
-	return s.stopProfileScan.stop[device]
+	return s.stopProfileScan.stop[node]
 }
 
-func (s *SimpleDriver) setStopProfileScan(device string, stop bool) {
+func (s *SimpleDriver) setStopProfileScan(node string, stop bool) {
 	s.stopProfileScan.locker.Lock()
 	defer s.stopProfileScan.locker.Unlock()
-	s.stopProfileScan.stop[device] = stop
+	s.stopProfileScan.stop[node] = stop
 	s.lc.Debugf("set stopProfileScan to %v", stop)
 }

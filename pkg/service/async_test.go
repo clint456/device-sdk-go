@@ -21,17 +21,17 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	internalCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	internalCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 )
 
-var d = sdkModels.DiscoveredDevice{
-	Name: "device-sdk-test",
+var d = sdkModels.DiscoveredNode{
+	Name: "node-sdk-test",
 }
 
-func newDeviceService() *deviceService {
-	return &deviceService{
+func newNodeService() *nodeService {
+	return &nodeService{
 		serviceKey: "test-service",
 		lc:         logger.NewMockClient(),
 	}
@@ -44,17 +44,17 @@ func Test_processAsyncFilterAndAdd_bypassValidation(t *testing.T) {
 		AdminState: models.Unlocked,
 	}
 
-	discovered := sdkModels.DiscoveredDevice{
-		Name: "new-device",
+	discovered := sdkModels.DiscoveredNode{
+		Name: "new-node",
 		Protocols: map[string]models.ProtocolProperties{
 			"http": {"host": "localhost"},
 		},
 	}
 
 	addCalled := make(chan struct{}, 1)
-	dcMock := &clientMocks.DeviceClient{}
-	dcMock.On("DevicesByServiceName", mock.Anything, testServiceKey, 0, -1).Return(
-		responses.MultiDevicesResponse{}, nil)
+	dcMock := &clientMocks.NodeClient{}
+	dcMock.On("NodesByServiceName", mock.Anything, testServiceKey, 0, -1).Return(
+		responses.MultiNodesResponse{}, nil)
 	dcMock.On("AddWithQueryParams",
 		mock.Anything,
 		mock.Anything,
@@ -69,7 +69,7 @@ func Test_processAsyncFilterAndAdd_bypassValidation(t *testing.T) {
 		bootstrapContainer.LoggingClientInterfaceName: func(get di.Get) interface{} {
 			return logger.NewMockClient()
 		},
-		bootstrapContainer.DeviceClientName: func(get di.Get) interface{} {
+		bootstrapContainer.NodeClientName: func(get di.Get) interface{} {
 			return dcMock
 		},
 		bootstrapContainer.ProvisionWatcherClientName: func(get di.Get) interface{} {
@@ -82,12 +82,12 @@ func Test_processAsyncFilterAndAdd_bypassValidation(t *testing.T) {
 	err = cache.ProvisionWatchers().Add(pw)
 	require.NoError(t, err)
 
-	deviceCh := make(chan []sdkModels.DiscoveredDevice, 1)
-	ds := &deviceService{
+	nodeCh := make(chan []sdkModels.DiscoveredNode, 1)
+	ds := &nodeService{
 		serviceKey: testServiceKey,
 		lc:         logger.NewMockClient(),
 		dic:        dic,
-		deviceCh:   deviceCh,
+		nodeCh:     nodeCh,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -95,7 +95,7 @@ func Test_processAsyncFilterAndAdd_bypassValidation(t *testing.T) {
 
 	go ds.processAsyncFilterAndAdd(ctx)
 
-	deviceCh <- []sdkModels.DiscoveredDevice{discovered}
+	nodeCh <- []sdkModels.DiscoveredNode{discovered}
 
 	select {
 	case <-addCalled:
@@ -105,7 +105,7 @@ func Test_processAsyncFilterAndAdd_bypassValidation(t *testing.T) {
 }
 
 func Test_checkAllowList(t *testing.T) {
-	ds := newDeviceService()
+	ds := newNodeService()
 	pw := models.ProvisionWatcher{
 		Name: "test-watcher",
 		Identifiers: map[string]string{
@@ -177,7 +177,7 @@ func Test_checkAllowList(t *testing.T) {
 }
 
 func Test_checkBlockList(t *testing.T) {
-	ds := newDeviceService()
+	ds := newNodeService()
 	pw := models.ProvisionWatcher{
 		Name: "test-watcher",
 		BlockingIdentifiers: map[string][]string{

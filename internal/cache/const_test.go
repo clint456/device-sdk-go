@@ -6,9 +6,9 @@
 package cache
 
 const (
-	TestDevice           = "testDevice"
+	TestNode             = "testNode"
 	TestProvisionWatcher = "testWatcher"
 	TestProfile          = "testProfile"
-	TestDeviceResource   = "testResource"
-	TestDeviceCommand    = "testCommand"
+	TestResource         = "testResource"
+	TestCommand          = "testCommand"
 )

@@ -8,23 +8,23 @@ Writable:
       ReadCommandsExecuted: true
 Service:
   Host: "localhost"
-  Port: 59999 # Device service are assigned the 599xx range
-  StartupMsg: device simple started
+  Port: 59999 # Node service are assigned the 599xx range
+  StartupMsg: node simple started
 
 MessageBus:
   Optional:
-    ClientId: device-simple
+    ClientId: node-simple
 
 # Cap on in-flight MQTT command requests; <= 0 uses built-in default (32).
 MaxConcurrentCommands: 32
 
 # Example overriding of Common Config settings
-Device:
+Node:
   AsyncBufferSize: 1
   # These have common values (currently), but must be here for service local env overrides to apply when customized
   ProfilesDir: ./res/profiles
-  DevicesDir: ./res/devices
-  # Only needed if device service implements auto provisioning
+  NodesDir: ./res/nodes
+  # Only needed if node service implements auto provisioning
   ProvisionWatchersDir: ./res/provisionwatchers
   Discovery:
     Enabled: false

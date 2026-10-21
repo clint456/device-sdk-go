@@ -15,50 +15,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testProfile = models.DeviceProfile{
+var testProfile = models.Profile{
 	Name: TestProfile,
-	DeviceResources: []models.DeviceResource{
-		models.DeviceResource{Name: TestDeviceResource},
-		models.DeviceResource{Name: TestDeviceResource + "suffix"},
+	Resources: []models.Resource{
+		models.Resource{Name: TestResource},
+		models.Resource{Name: TestResource + "suffix"},
 	},
-	DeviceCommands: []models.DeviceCommand{
-		models.DeviceCommand{
-			Name:      TestDeviceCommand,
+	Commands: []models.Command{
+		models.Command{
+			Name:      TestCommand,
 			ReadWrite: common.ReadWrite_R,
 			ResourceOperations: []models.ResourceOperation{
-				models.ResourceOperation{DeviceResource: TestDeviceResource},
+				models.ResourceOperation{Resource: TestResource},
 			},
 		},
 	},
 }
 
-var newProfile = models.DeviceProfile{
+var newProfile = models.Profile{
 	Name: "newProfile",
-	DeviceResources: []models.DeviceResource{
-		models.DeviceResource{Name: "newResource"},
+	Resources: []models.Resource{
+		models.Resource{Name: "newResource"},
 	},
-	DeviceCommands: []models.DeviceCommand{
-		models.DeviceCommand{
+	Commands: []models.Command{
+		models.Command{
 			Name:      "newCommand",
 			ReadWrite: common.ReadWrite_R,
 			ResourceOperations: []models.ResourceOperation{
-				models.ResourceOperation{DeviceResource: "newResource"},
+				models.ResourceOperation{Resource: "newResource"},
 			},
 		},
 	},
 }
 
 func Test_profileCache_ForName(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+	newProfileCache([]models.Profile{testProfile})
 
 	tests := []struct {
 		name        string
 		profileName string
-		profile     models.DeviceProfile
+		profile     models.Profile
 		expected    bool
 	}{
-		{"Invalid - empty name", "", models.DeviceProfile{}, false},
-		{"Invalid - nonexistent Profile name", "nil", models.DeviceProfile{}, false},
+		{"Invalid - empty name", "", models.Profile{}, false},
+		{"Invalid - nonexistent Profile name", "nil", models.Profile{}, false},
 		{"Valid", TestProfile, testProfile, true},
 	}
 	for _, tt := range tests {
@@ -71,14 +71,14 @@ func Test_profileCache_ForName(t *testing.T) {
 }
 
 func Test_profileCache_All(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+	newProfileCache([]models.Profile{testProfile})
 
 	res := pc.All()
-	assert.Equal(t, len(res), len(pc.deviceProfileMap))
+	assert.Equal(t, len(res), len(pc.profileMap))
 }
 
 func Test_profileCache_Add(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+	newProfileCache([]models.Profile{testProfile})
 
 	tests := []struct {
 		name          string
@@ -100,7 +100,7 @@ func Test_profileCache_Add(t *testing.T) {
 }
 
 func Test_profileCache_RemoveByName(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+	newProfileCache([]models.Profile{testProfile})
 
 	tests := []struct {
 		name          string
@@ -121,54 +121,54 @@ func Test_profileCache_RemoveByName(t *testing.T) {
 	}
 }
 
-func Test_profileCache_DeviceResource(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+func Test_profileCache_Resource(t *testing.T) {
+	newProfileCache([]models.Profile{testProfile})
 
 	tests := []struct {
-		name           string
-		profileName    string
-		resourceName   string
-		deviceResource models.DeviceResource
-		expected       bool
+		name         string
+		profileName  string
+		resourceName string
+		resource     models.Resource
+		expected     bool
 	}{
-		{"Invalid - nonexistent Profile name", "nil", TestDeviceResource, models.DeviceResource{}, false},
-		{"Invalid - nonexistent Resource name", TestProfile, "nil", models.DeviceResource{}, false},
-		{"Valid", TestProfile, TestDeviceResource, testProfile.DeviceResources[0], true},
+		{"Invalid - nonexistent Profile name", "nil", TestResource, models.Resource{}, false},
+		{"Invalid - nonexistent Resource name", TestProfile, "nil", models.Resource{}, false},
+		{"Valid", TestProfile, TestResource, testProfile.Resources[0], true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, ok := pc.DeviceResource(tt.profileName, tt.resourceName)
-			assert.Equal(t, res, tt.deviceResource, "DeviceResource returns wrong deviceResource")
-			assert.Equal(t, ok, tt.expected, "DeviceResource returns opposite result")
+			res, ok := pc.Resource(tt.profileName, tt.resourceName)
+			assert.Equal(t, res, tt.resource, "Resource returns wrong resource")
+			assert.Equal(t, ok, tt.expected, "Resource returns opposite result")
 		})
 	}
 }
 
-func Test_profileCache_DeviceCommand(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+func Test_profileCache_Command(t *testing.T) {
+	newProfileCache([]models.Profile{testProfile})
 
 	tests := []struct {
-		name          string
-		profileName   string
-		commandName   string
-		deviceCommand models.DeviceCommand
-		expected      bool
+		name        string
+		profileName string
+		commandName string
+		command     models.Command
+		expected    bool
 	}{
-		{"Invalid - nonexistent Profile name", "nil", TestDeviceCommand, models.DeviceCommand{}, false},
-		{"Invalid - nonexistent Command name", TestProfile, "nil", models.DeviceCommand{}, false},
-		{"Valid", TestProfile, TestDeviceCommand, testProfile.DeviceCommands[0], true},
+		{"Invalid - nonexistent Profile name", "nil", TestCommand, models.Command{}, false},
+		{"Invalid - nonexistent Command name", TestProfile, "nil", models.Command{}, false},
+		{"Valid", TestProfile, TestCommand, testProfile.Commands[0], true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, ok := pc.DeviceCommand(tt.profileName, tt.commandName)
-			assert.Equal(t, res, tt.deviceCommand, "DeviceResource returns wrong deviceResource")
-			assert.Equal(t, ok, tt.expected, "DeviceResource returns opposite result")
+			res, ok := pc.Command(tt.profileName, tt.commandName)
+			assert.Equal(t, res, tt.command, "Resource returns wrong resource")
+			assert.Equal(t, ok, tt.expected, "Resource returns opposite result")
 		})
 	}
 }
 
 func Test_profileCache_ResourceOperation(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+	newProfileCache([]models.Profile{testProfile})
 
 	tests := []struct {
 		name          string
@@ -177,9 +177,9 @@ func Test_profileCache_ResourceOperation(t *testing.T) {
 		res           models.ResourceOperation
 		expectedError bool
 	}{
-		{"Invalid - nonexistent Profile name", "nil", TestDeviceResource, models.ResourceOperation{}, true},
-		{"Invalid - nonexistent DeviceResource name", TestProfile, "nil", models.ResourceOperation{}, true},
-		{"Valid", TestProfile, TestDeviceResource, testProfile.DeviceCommands[0].ResourceOperations[0], false},
+		{"Invalid - nonexistent Profile name", "nil", TestResource, models.ResourceOperation{}, true},
+		{"Invalid - nonexistent Resource name", TestProfile, "nil", models.ResourceOperation{}, true},
+		{"Valid", TestProfile, TestResource, testProfile.Commands[0].ResourceOperations[0], false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -195,8 +195,8 @@ func Test_profileCache_ResourceOperation(t *testing.T) {
 	}
 }
 
-func Test_profileCache_DeviceResourcesByRegex(t *testing.T) {
-	newProfileCache([]models.DeviceProfile{testProfile})
+func Test_profileCache_ResourcesByRegex(t *testing.T) {
+	newProfileCache([]models.Profile{testProfile})
 
 	tests := []struct {
 		name              string
@@ -205,7 +205,7 @@ func Test_profileCache_DeviceResourcesByRegex(t *testing.T) {
 		matchedResources  int
 		expected          bool
 	}{
-		{"valid - resources found by resource name", TestProfile, TestDeviceResource, 1, true},
+		{"valid - resources found by resource name", TestProfile, TestResource, 1, true},
 		{"valid - resources found by regex pattern", TestProfile, "testResource.*", 2, true},
 		{"Valid -  resources not found by regex pattern", TestProfile, "^resource.*", 0, true},
 		{"invalid - profile not found", "nil", "%2E%2B-resource", 0, false},
@@ -215,9 +215,9 @@ func Test_profileCache_DeviceResourcesByRegex(t *testing.T) {
 			regex, err := regexp.CompilePOSIX(tt.regexResourceName)
 			require.NoError(t, err)
 
-			res, ok := pc.DeviceResourcesByRegex(tt.profileName, regex)
-			assert.Equal(t, len(res), tt.matchedResources, "DeviceResourcesByRegex returns wrong deviceResource")
-			assert.Equal(t, ok, tt.expected, "DeviceResourcesByRegex returns opposite result")
+			res, ok := pc.ResourcesByRegex(tt.profileName, regex)
+			assert.Equal(t, len(res), tt.matchedResources, "ResourcesByRegex returns wrong resource")
+			assert.Equal(t, ok, tt.expected, "ResourcesByRegex returns opposite result")
 		})
 	}
 }

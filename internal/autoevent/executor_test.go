@@ -23,7 +23,7 @@ func TestCompareReadings(t *testing.T) {
 	autoEvent := models.AutoEvent{SourceName: "sourceName", OnChange: true, Interval: "500ms"}
 	pool, err := ants.NewPool(runtime.GOMAXPROCS(0), ants.WithNonblocking(true))
 	require.NoError(t, err)
-	e, err := NewExecutor("device-test", autoEvent, pool)
+	e, err := NewExecutor("node-test", autoEvent, pool)
 	require.NoError(t, err)
 
 	testReadings := []dtos.BaseReading{{ResourceName: "r1"}, {ResourceName: "r2"}}
@@ -83,13 +83,13 @@ func TestCompareReadings(t *testing.T) {
 }
 
 func TestOnChangeThreshold(t *testing.T) {
-	deviceName := "testDevice"
+	nodeName := "testNode"
 	resourceName := "testResource"
 	profileName := "testProfile"
 	autoEvent := models.AutoEvent{SourceName: resourceName, OnChange: true, Interval: "500ms"}
 	pool, err := ants.NewPool(runtime.GOMAXPROCS(0), ants.WithNonblocking(true))
 	require.NoError(t, err)
-	e, err := NewExecutor(deviceName, autoEvent, pool)
+	e, err := NewExecutor(nodeName, autoEvent, pool)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -124,9 +124,9 @@ func TestOnChangeThreshold(t *testing.T) {
 
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
-			lastReading, err := dtos.NewSimpleReading(profileName, deviceName, resourceName, testCase.valueType, testCase.lastReadingValue)
+			lastReading, err := dtos.NewSimpleReading(profileName, nodeName, resourceName, testCase.valueType, testCase.lastReadingValue)
 			require.NoError(t, err)
-			currentReading, err := dtos.NewSimpleReading(profileName, deviceName, resourceName, testCase.valueType, testCase.currentReadingValue)
+			currentReading, err := dtos.NewSimpleReading(profileName, nodeName, resourceName, testCase.valueType, testCase.currentReadingValue)
 			require.NoError(t, err)
 			e.lastReadings = map[string]any{lastReading.ResourceName: lastReading.Value}
 			e.onChangeThreshold = testCase.onChangeThreshold

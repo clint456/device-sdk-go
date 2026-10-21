@@ -6,8 +6,8 @@
 
 package container
 
-// AllowedFailuresTracker wraps a map of device names to atomic integers that track the number of allowed request
-// failures for each device.
+// AllowedFailuresTracker wraps a map of node names to atomic integers that track the number of allowed request
+// failures for each node.
 type AllowedFailuresTracker struct {
 	data map[string]*AtomicInt
 }
@@ -19,24 +19,24 @@ func NewAllowedFailuresTracker() AllowedFailuresTracker {
 	}
 }
 
-// Get retrieves the AtomicInt for a given device name.
-// Returns nil if the device does not exist.
-func (aft *AllowedFailuresTracker) Get(deviceName string) *AtomicInt {
-	return aft.data[deviceName]
+// Get retrieves the AtomicInt for a given node name.
+// Returns nil if the node does not exist.
+func (aft *AllowedFailuresTracker) Get(nodeName string) *AtomicInt {
+	return aft.data[nodeName]
 }
 
-// Set initializes or updates the AtomicInt for a given device.
-func (aft *AllowedFailuresTracker) Set(deviceName string, value int) {
-	if _, exists := aft.data[deviceName]; !exists {
-		aft.data[deviceName] = &AtomicInt{}
+// Set initializes or updates the AtomicInt for a given node.
+func (aft *AllowedFailuresTracker) Set(nodeName string, value int) {
+	if _, exists := aft.data[nodeName]; !exists {
+		aft.data[nodeName] = &AtomicInt{}
 	}
-	aft.data[deviceName].Set(value)
+	aft.data[nodeName].Set(value)
 }
 
-// Decrease decreases the AtomicInt value for a given device by 1.
-// Returns the updated value or -1 if the device does not exist.
-func (aft *AllowedFailuresTracker) Decrease(deviceName string) int {
-	if atomicInt, exists := aft.data[deviceName]; exists {
+// Decrease decreases the AtomicInt value for a given node by 1.
+// Returns the updated value or -1 if the node does not exist.
+func (aft *AllowedFailuresTracker) Decrease(nodeName string) int {
+	if atomicInt, exists := aft.data[nodeName]; exists {
 		if atomicInt.Value() >= 0 {
 			return atomicInt.Decrease()
 		}
@@ -44,16 +44,16 @@ func (aft *AllowedFailuresTracker) Decrease(deviceName string) int {
 	return -1
 }
 
-// Value retrieves the current value of the AtomicInt for a device.
-// Returns -1 if the device does not exist.
-func (aft *AllowedFailuresTracker) Value(deviceName string) int {
-	if atomicInt, exists := aft.data[deviceName]; exists {
+// Value retrieves the current value of the AtomicInt for a node.
+// Returns -1 if the node does not exist.
+func (aft *AllowedFailuresTracker) Value(nodeName string) int {
+	if atomicInt, exists := aft.data[nodeName]; exists {
 		return atomicInt.Value()
 	}
 	return -1
 }
 
-// Remove deletes the entry for a given device name from the tracker.
-func (aft *AllowedFailuresTracker) Remove(deviceName string) {
-	delete(aft.data, deviceName)
+// Remove deletes the entry for a given node name from the tracker.
+func (aft *AllowedFailuresTracker) Remove(nodeName string) {
+	delete(aft.data, nodeName)
 }

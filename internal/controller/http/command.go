@@ -19,14 +19,14 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/responses"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/errors"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/application"
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/application"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
 
 	"github.com/labstack/echo/v4"
 )
 
 func (c *RestController) GetCommand(e echo.Context) error {
-	deviceName := e.Param(common.Name)
+	nodeName := e.Param(common.Name)
 	commandName := e.Param(common.Command)
 	r := e.Request()
 	w := e.Response()
@@ -36,7 +36,7 @@ func (c *RestController) GetCommand(e echo.Context) error {
 	// parse query parameter
 	queryParams, reserved, err := filterQueryParams(r.URL.RawQuery)
 	if err != nil {
-		return c.sendEdgexError(w, r, err, common.ApiDeviceNameCommandNameRoute)
+		return c.sendEdgexError(w, r, err, common.ApiNodeNameCommandNameRoute)
 	}
 
 	regexCmd := true
@@ -44,9 +44,9 @@ func (c *RestController) GetCommand(e echo.Context) error {
 		regexCmd = false
 	}
 
-	event, err := application.GetCommand(ctx, deviceName, commandName, queryParams, regexCmd, c.dic)
+	event, err := application.GetCommand(ctx, nodeName, commandName, queryParams, regexCmd, c.dic)
 	if err != nil {
-		return c.sendEdgexError(w, r, err, common.ApiDeviceNameCommandNameRoute)
+		return c.sendEdgexError(w, r, err, common.ApiNodeNameCommandNameRoute)
 	}
 
 	// push event to CoreData if specified (default false)
@@ -72,23 +72,23 @@ func (c *RestController) SetCommand(e echo.Context) error {
 	}
 
 	ctx := r.Context()
-	deviceName := e.Param(common.Name)
+	nodeName := e.Param(common.Name)
 	commandName := e.Param(common.Command)
 
 	// parse query parameter
 	queryParams, _, err := filterQueryParams(r.URL.RawQuery)
 	if err != nil {
-		return c.sendEdgexError(w, r, err, common.ApiDeviceNameCommandNameRoute)
+		return c.sendEdgexError(w, r, err, common.ApiNodeNameCommandNameRoute)
 	}
 
 	requestParamsMap, err := parseRequestBody(r)
 	if err != nil {
-		return c.sendEdgexError(w, r, err, common.ApiDeviceNameCommandNameRoute)
+		return c.sendEdgexError(w, r, err, common.ApiNodeNameCommandNameRoute)
 	}
 
-	event, err := application.SetCommand(ctx, deviceName, commandName, queryParams, requestParamsMap, c.dic)
+	event, err := application.SetCommand(ctx, nodeName, commandName, queryParams, requestParamsMap, c.dic)
 	if err != nil {
-		return c.sendEdgexError(w, r, err, common.ApiDeviceNameCommandNameRoute)
+		return c.sendEdgexError(w, r, err, common.ApiNodeNameCommandNameRoute)
 	}
 
 	if event != nil {
@@ -97,7 +97,7 @@ func (c *RestController) SetCommand(e echo.Context) error {
 	}
 
 	res := commonDTO.NewBaseResponse("", "", http.StatusOK)
-	return c.sendResponse(w, r, common.ApiDeviceNameCommandNameRoute, res, http.StatusOK)
+	return c.sendResponse(w, r, common.ApiNodeNameCommandNameRoute, res, http.StatusOK)
 }
 
 func parseRequestBody(req *http.Request) (map[string]interface{}, errors.EdgeX) {

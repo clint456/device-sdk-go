@@ -9,7 +9,7 @@ EXIT_CODE=0
 
 cd "$GIT_ROOT"
 
-cd example/cmd/device-simple
+cd example/cmd/node-simple
 
 if [ ! -f Attribution.txt ]; then
     echo "An Attribution.txt file is missing, please add"

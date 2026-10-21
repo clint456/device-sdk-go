@@ -28,26 +28,26 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces/mocks"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces/mocks"
 )
 
 const (
-	testDeviceName   = "testDevice"
+	testNodeName     = "testNode"
 	testServiceName  = "testService"
 	testProfileName  = "testProfile"
 	testProtocolName = "testProtocol"
 )
 
-func TestDeviceValidation(t *testing.T) {
+func TestNodeValidation(t *testing.T) {
 	var wg sync.WaitGroup
 	expectedRequestId := uuid.NewString()
 	expectedCorrelationId := uuid.NewString()
-	expectedRequestTopic := common.BuildTopic(common.DefaultBaseTopic, testServiceName, common.ValidateDeviceSubscribeTopic)
+	expectedRequestTopic := common.BuildTopic(common.DefaultBaseTopic, testServiceName, common.ValidateNodeSubscribeTopic)
 	expectedResponseTopic := common.BuildTopic(common.DefaultBaseTopic, common.ResponseTopic, testServiceName, expectedRequestId)
-	expectedDevice := dtos.Device{
-		Name:           testDeviceName,
+	expectedNode := dtos.Node{
+		Name:           testNodeName,
 		AdminState:     models.Locked,
 		OperatingState: models.Up,
 		ServiceName:    testServiceName,
@@ -56,13 +56,13 @@ func TestDeviceValidation(t *testing.T) {
 			testProtocolName: {"key": "value"},
 		},
 	}
-	expectedAddDeviceRequest := requests.NewAddDeviceRequest(expectedDevice)
-	expectedAddDeviceRequestBytes, err := json.Marshal(expectedAddDeviceRequest)
+	expectedAddNodeRequest := requests.NewAddNodeRequest(expectedNode)
+	expectedAddNodeRequestBytes, err := json.Marshal(expectedAddNodeRequest)
 	require.NoError(t, err)
-	validationFailedDevice := expectedDevice
-	validationFailedDevice.Name = "validationFailedDevice"
-	validationFailedDeviceRequest := requests.NewAddDeviceRequest(validationFailedDevice)
-	validationFailedDeviceRequestBytes, err := json.Marshal(validationFailedDeviceRequest)
+	validationFailedNode := expectedNode
+	validationFailedNode.Name = "validationFailedNode"
+	validationFailedNodeRequest := requests.NewAddNodeRequest(validationFailedNode)
+	validationFailedNodeRequestBytes, err := json.Marshal(validationFailedNodeRequest)
 	require.NoError(t, err)
 
 	mockLogger := &loggerMocks.LoggingClient{}
@@ -71,8 +71,8 @@ func TestDeviceValidation(t *testing.T) {
 	mockLogger.On("Errorf", mock.Anything, mock.Anything).Return(nil)
 
 	mockDriver := &mocks.ProtocolDriver{}
-	mockDriver.On("ValidateDevice", dtos.ToDeviceModel(expectedDevice)).Return(nil)
-	mockDriver.On("ValidateDevice", dtos.ToDeviceModel(validationFailedDevice)).Return(errors.New("validation failed"))
+	mockDriver.On("ValidateNode", dtos.ToNodeModel(expectedNode)).Return(nil)
+	mockDriver.On("ValidateNode", dtos.ToNodeModel(validationFailedNode)).Return(errors.New("validation failed"))
 
 	dic := di.NewContainer(di.ServiceConstructorMap{
 		container.ConfigurationName: func(get di.Get) any {
@@ -81,8 +81,8 @@ func TestDeviceValidation(t *testing.T) {
 		container.ProtocolDriverName: func(get di.Get) any {
 			return mockDriver
 		},
-		container.DeviceServiceName: func(get di.Get) any {
-			return &models.DeviceService{Name: testServiceName}
+		container.NodeServiceName: func(get di.Get) any {
+			return &models.NodeService{Name: testServiceName}
 		},
 		bootstrapContainer.LoggingClientInterfaceName: func(get di.Get) any {
 			return mockLogger
@@ -95,12 +95,12 @@ func TestDeviceValidation(t *testing.T) {
 		expectedError bool
 		withEnv       bool
 	}{
-		{"valid with env - device validation succeed", expectedAddDeviceRequestBytes, false, true},
-		{"valid with env - device validation failed", validationFailedDeviceRequestBytes, true, true},
-		{"invalid with env - message payload is not AddDeviceRequest", []byte("invalid"), true, true},
-		{"valid - device validation succeed", expectedAddDeviceRequest, false, false},
-		{"valid - device validation failed", validationFailedDeviceRequest, true, false},
-		{"invalid - message payload is not AddDeviceRequest", []byte("invalid"), true, false},
+		{"valid with env - node validation succeed", expectedAddNodeRequestBytes, false, true},
+		{"valid with env - node validation failed", validationFailedNodeRequestBytes, true, true},
+		{"invalid with env - message payload is not AddNodeRequest", []byte("invalid"), true, true},
+		{"valid - node validation succeed", expectedAddNodeRequest, false, false},
+		{"valid - node validation failed", validationFailedNodeRequest, true, false},
+		{"invalid - message payload is not AddNodeRequest", []byte("invalid"), true, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestDeviceValidation(t *testing.T) {
 					return mockMessaging
 				},
 			})
-			err := SubscribeDeviceValidation(context.Background(), dic)
+			err := SubscribeNodeValidation(context.Background(), dic)
 			require.NoError(t, err)
 
 			wg.Wait()

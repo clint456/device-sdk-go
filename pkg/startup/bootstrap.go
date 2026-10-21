@@ -11,20 +11,20 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/service"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/service"
 )
 
 func Bootstrap(serviceKey string, serviceVersion string, driver interfaces.ProtocolDriver) {
-	deviceService, err := service.NewDeviceService(serviceKey, serviceVersion, driver)
+	nodeService, err := service.NewNodeService(serviceKey, serviceVersion, driver)
 	if err != nil {
 		_, _ = fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(-1)
 	}
 
-	err = deviceService.Run()
+	err = nodeService.Run()
 	if err != nil {
-		deviceService.LoggingClient().Errorf("Device Service %s", err.Error())
+		nodeService.LoggingClient().Errorf("Node Service %s", err.Error())
 		os.Exit(-1)
 	}
 

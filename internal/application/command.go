@@ -20,11 +20,11 @@ import (
 
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/clients/http/utils"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/transformer"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/transformer"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
@@ -34,34 +34,34 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 )
 
-func GetCommand(ctx context.Context, deviceName string, commandName string, queryParams string, regexCmd bool, dic *di.Container) (res *dtos.Event, err errors.EdgeX) {
-	if deviceName == "" {
-		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "device name is empty", nil)
+func GetCommand(ctx context.Context, nodeName string, commandName string, queryParams string, regexCmd bool, dic *di.Container) (res *dtos.Event, err errors.EdgeX) {
+	if nodeName == "" {
+		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "node name is empty", nil)
 	}
 	if commandName == "" {
 		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "command is empty", nil)
 	}
-	var device models.Device
+	var node models.Node
 	defer func() {
 		if err != nil {
-			DeviceRequestFailed(deviceName, dic)
+			NodeRequestFailed(nodeName, dic)
 		} else {
-			DeviceRequestSucceeded(device, dic)
+			NodeRequestSucceeded(node, dic)
 		}
 	}()
 
-	device, err = validateServiceAndDeviceState(deviceName, dic)
+	node, err = validateServiceAndNodeState(nodeName, dic)
 	if err != nil {
 		return nil, errors.NewCommonEdgeXWrapper(err)
 	}
 
-	_, cmdExist := cache.Profiles().DeviceCommand(device.ProfileName, commandName)
+	_, cmdExist := cache.Profiles().Command(node.ProfileName, commandName)
 	if cmdExist {
-		res, err = readDeviceCommand(device, commandName, queryParams, dic)
+		res, err = readCommand(node, commandName, queryParams, dic)
 	} else if regexCmd {
-		res, err = readDeviceResourcesRegex(device, commandName, queryParams, dic)
+		res, err = readResourcesRegex(node, commandName, queryParams, dic)
 	} else {
-		res, err = readDeviceResource(device, commandName, queryParams, dic)
+		res, err = readResource(node, commandName, queryParams, dic)
 	}
 
 	if err != nil {
@@ -69,38 +69,38 @@ func GetCommand(ctx context.Context, deviceName string, commandName string, quer
 	}
 
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	lc.Debugf("GET Device Command successfully. Device: %s, Source: %s, %s: %s", deviceName, commandName, common.CorrelationHeader, utils.FromContext(ctx, common.CorrelationHeader))
+	lc.Debugf("GET Node Command successfully. Node: %s, Source: %s, %s: %s", nodeName, commandName, common.CorrelationHeader, utils.FromContext(ctx, common.CorrelationHeader))
 
-	cache.Devices().SetLastConnectedByName(deviceName)
+	cache.Nodes().SetLastConnectedByName(nodeName)
 	return res, nil
 }
 
-func SetCommand(ctx context.Context, deviceName string, commandName string, queryParams string, requests map[string]any, dic *di.Container) (event *dtos.Event, err errors.EdgeX) {
-	if deviceName == "" {
-		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "device name is empty", nil)
+func SetCommand(ctx context.Context, nodeName string, commandName string, queryParams string, requests map[string]any, dic *di.Container) (event *dtos.Event, err errors.EdgeX) {
+	if nodeName == "" {
+		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "node name is empty", nil)
 	}
 	if commandName == "" {
 		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "command is empty", nil)
 	}
-	var device models.Device
+	var node models.Node
 	defer func() {
 		if err != nil {
-			DeviceRequestFailed(deviceName, dic)
+			NodeRequestFailed(nodeName, dic)
 		} else {
-			DeviceRequestSucceeded(device, dic)
+			NodeRequestSucceeded(node, dic)
 		}
 	}()
 
-	device, err = validateServiceAndDeviceState(deviceName, dic)
+	node, err = validateServiceAndNodeState(nodeName, dic)
 	if err != nil {
 		return nil, errors.NewCommonEdgeXWrapper(err)
 	}
 
-	_, cmdExist := cache.Profiles().DeviceCommand(device.ProfileName, commandName)
+	_, cmdExist := cache.Profiles().Command(node.ProfileName, commandName)
 	if cmdExist {
-		event, err = writeDeviceCommand(device, commandName, queryParams, requests, dic)
+		event, err = writeCommand(node, commandName, queryParams, requests, dic)
 	} else {
-		event, err = writeDeviceResource(device, commandName, queryParams, requests, dic)
+		event, err = writeResource(node, commandName, queryParams, requests, dic)
 	}
 
 	if err != nil {
@@ -108,21 +108,21 @@ func SetCommand(ctx context.Context, deviceName string, commandName string, quer
 	}
 
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	lc.Debugf("SET Device Command successfully. Device: %s, Source: %s, %s: %s", deviceName, commandName, common.CorrelationHeader, utils.FromContext(ctx, common.CorrelationHeader))
+	lc.Debugf("SET Node Command successfully. Node: %s, Source: %s, %s: %s", nodeName, commandName, common.CorrelationHeader, utils.FromContext(ctx, common.CorrelationHeader))
 
-	cache.Devices().SetLastConnectedByName(deviceName)
+	cache.Nodes().SetLastConnectedByName(nodeName)
 	return event, nil
 }
 
-func readDeviceResource(device models.Device, resourceName string, attributes string, dic *di.Container) (*dtos.Event, errors.EdgeX) {
-	dr, ok := cache.Profiles().DeviceResource(device.ProfileName, resourceName)
+func readResource(node models.Node, resourceName string, attributes string, dic *di.Container) (*dtos.Event, errors.EdgeX) {
+	dr, ok := cache.Profiles().Resource(node.ProfileName, resourceName)
 	if !ok {
-		errMsg := fmt.Sprintf("DeviceResource %s not found", resourceName)
+		errMsg := fmt.Sprintf("Resource %s not found", resourceName)
 		return nil, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 	}
-	// check deviceResource is not write-only
+	// check resource is not write-only
 	if dr.Properties.ReadWrite == common.ReadWrite_W {
-		errMsg := fmt.Sprintf("DeviceResource %s is marked as write-only", dr.Name)
+		errMsg := fmt.Sprintf("Resource %s is marked as write-only", dr.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindNotAllowed, errMsg, nil)
 	}
 
@@ -130,7 +130,7 @@ func readDeviceResource(device models.Device, resourceName string, attributes st
 	var reqs []sdkModels.CommandRequest
 
 	// prepare CommandRequest
-	req.DeviceResourceName = dr.Name
+	req.ResourceName = dr.Name
 	req.Attributes = dr.Attributes
 	if attributes != "" {
 		if len(req.Attributes) <= 0 {
@@ -143,15 +143,15 @@ func readDeviceResource(device models.Device, resourceName string, attributes st
 
 	// execute protocol-specific read operation
 	driver := container.ProtocolDriverFrom(dic.Get)
-	results, err := driver.HandleReadCommands(device.Name, device.Protocols, reqs)
+	results, err := driver.HandleReadCommands(node.Name, node.Protocols, reqs)
 	if err != nil {
-		errMsg := fmt.Sprintf("error reading DeviceResource %s for %s", dr.Name, device.Name)
+		errMsg := fmt.Sprintf("error reading Resource %s for %s", dr.Name, node.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	// convert CommandValue to Event
 	configuration := container.ConfigurationFrom(dic.Get)
-	event, err := transformer.CommandValuesToEventDTO(results, device.Name, dr.Name, configuration.Device.DataTransform, dic)
+	event, err := transformer.CommandValuesToEventDTO(results, node.Name, dr.Name, configuration.Node.DataTransform, dic)
 	if err != nil {
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, "failed to convert CommandValue to Event", err)
 	}
@@ -159,30 +159,30 @@ func readDeviceResource(device models.Device, resourceName string, attributes st
 	return event, nil
 }
 
-func readDeviceResourcesRegex(device models.Device, regexResourceName string, attributes string, dic *di.Container) (*dtos.Event, errors.EdgeX) {
+func readResourcesRegex(node models.Node, regexResourceName string, attributes string, dic *di.Container) (*dtos.Event, errors.EdgeX) {
 	regex, err := regexp.CompilePOSIX(regexResourceName)
 	if err != nil {
 		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "failed to CompilePOSIX resource name", err)
 	}
 
-	deviceResources, ok := cache.Profiles().DeviceResourcesByRegex(device.ProfileName, regex)
-	if !ok || len(deviceResources) == 0 {
-		errMsg := fmt.Sprintf("Regex DeviceResource %s not found", regexResourceName)
+	resources, ok := cache.Profiles().ResourcesByRegex(node.ProfileName, regex)
+	if !ok || len(resources) == 0 {
+		errMsg := fmt.Sprintf("Regex Resource %s not found", regexResourceName)
 		return nil, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 	}
 
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	reqs := make([]sdkModels.CommandRequest, 0)
-	for _, dr := range deviceResources {
-		// check deviceResource is not write-only
+	for _, dr := range resources {
+		// check resource is not write-only
 		if dr.Properties.ReadWrite == common.ReadWrite_W {
-			lc.Debugf("DeviceResource %s is marked as write-only, skipping adding to RegEx Read list", dr.Name)
+			lc.Debugf("Resource %s is marked as write-only, skipping adding to RegEx Read list", dr.Name)
 			continue
 		}
 
 		// prepare CommandRequest
 		var req sdkModels.CommandRequest
-		req.DeviceResourceName = dr.Name
+		req.ResourceName = dr.Name
 		req.Attributes = dr.Attributes
 		if attributes != "" {
 			if len(req.Attributes) <= 0 {
@@ -202,15 +202,15 @@ func readDeviceResourcesRegex(device models.Device, regexResourceName string, at
 
 	// execute protocol-specific read operation
 	driver := container.ProtocolDriverFrom(dic.Get)
-	results, err := driver.HandleReadCommands(device.Name, device.Protocols, reqs)
+	results, err := driver.HandleReadCommands(node.Name, node.Protocols, reqs)
 	if err != nil {
-		errMsg := fmt.Sprintf("error reading Regex DeviceResource(s) %s for %s", regexResourceName, device.Name)
+		errMsg := fmt.Sprintf("error reading Regex Resource(s) %s for %s", regexResourceName, node.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	// convert CommandValue to Event
 	configuration := container.ConfigurationFrom(dic.Get)
-	event, err := transformer.CommandValuesToEventDTO(results, device.Name, regexResourceName, configuration.Device.DataTransform, dic)
+	event, err := transformer.CommandValuesToEventDTO(results, node.Name, regexResourceName, configuration.Node.DataTransform, dic)
 	if err != nil {
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, "failed to convert CommandValue to Event", err)
 	}
@@ -218,36 +218,36 @@ func readDeviceResourcesRegex(device models.Device, regexResourceName string, at
 	return event, nil
 }
 
-func readDeviceCommand(device models.Device, commandName string, attributes string, dic *di.Container) (*dtos.Event, errors.EdgeX) {
-	dc, ok := cache.Profiles().DeviceCommand(device.ProfileName, commandName)
+func readCommand(node models.Node, commandName string, attributes string, dic *di.Container) (*dtos.Event, errors.EdgeX) {
+	dc, ok := cache.Profiles().Command(node.ProfileName, commandName)
 	if !ok {
-		errMsg := fmt.Sprintf("DeviceCommand %s not found", commandName)
+		errMsg := fmt.Sprintf("Command %s not found", commandName)
 		return nil, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 	}
-	// check deviceCommand is not write-only
+	// check command is not write-only
 	if dc.ReadWrite == common.ReadWrite_W {
-		errMsg := fmt.Sprintf("DeviceCommand %s is marked as write-only", dc.Name)
+		errMsg := fmt.Sprintf("Command %s is marked as write-only", dc.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindNotAllowed, errMsg, nil)
 	}
 	// check ResourceOperation count does not exceed MaxCmdOps defined in configuration
 	configuration := container.ConfigurationFrom(dic.Get)
-	if len(dc.ResourceOperations) > configuration.Device.MaxCmdOps {
-		errMsg := fmt.Sprintf("GET command %s exceed device %s MaxCmdOps (%d)", dc.Name, device.Name, configuration.Device.MaxCmdOps)
+	if len(dc.ResourceOperations) > configuration.Node.MaxCmdOps {
+		errMsg := fmt.Sprintf("GET command %s exceed node %s MaxCmdOps (%d)", dc.Name, node.Name, configuration.Node.MaxCmdOps)
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, nil)
 	}
 
 	// prepare CommandRequests
 	reqs := make([]sdkModels.CommandRequest, len(dc.ResourceOperations))
 	for i, op := range dc.ResourceOperations {
-		drName := op.DeviceResource
-		// check the deviceResource in ResourceOperation actually exist
-		dr, ok := cache.Profiles().DeviceResource(device.ProfileName, drName)
+		drName := op.Resource
+		// check the resource in ResourceOperation actually exist
+		dr, ok := cache.Profiles().Resource(node.ProfileName, drName)
 		if !ok {
-			errMsg := fmt.Sprintf("DeviceResource %s in GET commnd %s for %s not defined", drName, dc.Name, device.Name)
+			errMsg := fmt.Sprintf("Resource %s in GET commnd %s for %s not defined", drName, dc.Name, node.Name)
 			return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, nil)
 		}
 
-		reqs[i].DeviceResourceName = dr.Name
+		reqs[i].ResourceName = dr.Name
 		reqs[i].Attributes = dr.Attributes
 		if attributes != "" {
 			if len(reqs[i].Attributes) <= 0 {
@@ -260,14 +260,14 @@ func readDeviceCommand(device models.Device, commandName string, attributes stri
 
 	// execute protocol-specific read operation
 	driver := container.ProtocolDriverFrom(dic.Get)
-	results, err := driver.HandleReadCommands(device.Name, device.Protocols, reqs)
+	results, err := driver.HandleReadCommands(node.Name, node.Protocols, reqs)
 	if err != nil {
-		errMsg := fmt.Sprintf("error reading DeviceCommand %s for %s", dc.Name, device.Name)
+		errMsg := fmt.Sprintf("error reading Command %s for %s", dc.Name, node.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	// convert CommandValue to Event
-	event, err := transformer.CommandValuesToEventDTO(results, device.Name, dc.Name, configuration.Device.DataTransform, dic)
+	event, err := transformer.CommandValuesToEventDTO(results, node.Name, dc.Name, configuration.Node.DataTransform, dic)
 	if err != nil {
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, "failed to transform CommandValue to Event", err)
 	}
@@ -275,38 +275,38 @@ func readDeviceCommand(device models.Device, commandName string, attributes stri
 	return event, nil
 }
 
-func writeDeviceResource(device models.Device, resourceName string, attributes string, requests map[string]any, dic *di.Container) (*dtos.Event, errors.EdgeX) {
-	dr, ok := cache.Profiles().DeviceResource(device.ProfileName, resourceName)
+func writeResource(node models.Node, resourceName string, attributes string, requests map[string]any, dic *di.Container) (*dtos.Event, errors.EdgeX) {
+	dr, ok := cache.Profiles().Resource(node.ProfileName, resourceName)
 	if !ok {
-		errMsg := fmt.Sprintf("DeviceResource %s not found", resourceName)
+		errMsg := fmt.Sprintf("Resource %s not found", resourceName)
 		return nil, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 	}
-	// check deviceResource is not read-only
+	// check resource is not read-only
 	if dr.Properties.ReadWrite == common.ReadWrite_R {
-		errMsg := fmt.Sprintf("DeviceResource %s is marked as read-only", dr.Name)
+		errMsg := fmt.Sprintf("Resource %s is marked as read-only", dr.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindNotAllowed, errMsg, nil)
 	}
 
-	// check set parameters contains provided deviceResource
+	// check set parameters contains provided resource
 	v, ok := requests[dr.Name]
 	if !ok {
 		if dr.Properties.DefaultValue != "" {
 			v = dr.Properties.DefaultValue
 		} else {
-			errMsg := fmt.Sprintf("DeviceResource %s not found in request body and no default value defined", dr.Name)
+			errMsg := fmt.Sprintf("Resource %s not found in request body and no default value defined", dr.Name)
 			return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, nil)
 		}
 	}
 
 	// create CommandValue
-	cv, edgexErr := createCommandValueFromDeviceResource(dr, v)
+	cv, edgexErr := createCommandValueFromResource(dr, v)
 	if edgexErr != nil {
 		return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "failed to create CommandValue", edgexErr)
 	}
 
 	// prepare CommandRequest
 	reqs := make([]sdkModels.CommandRequest, 1)
-	reqs[0].DeviceResourceName = cv.DeviceResourceName
+	reqs[0].ResourceName = cv.ResourceName
 	reqs[0].Attributes = dr.Attributes
 	if attributes != "" {
 		if len(reqs[0].Attributes) <= 0 {
@@ -318,7 +318,7 @@ func writeDeviceResource(device models.Device, resourceName string, attributes s
 
 	// transform write value
 	configuration := container.ConfigurationFrom(dic.Get)
-	if configuration.Device.DataTransform {
+	if configuration.Node.DataTransform {
 		edgexErr = transformer.TransformWriteParameter(cv, dr.Properties)
 		if edgexErr != nil {
 			return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "failed to transform set parameter", edgexErr)
@@ -327,58 +327,58 @@ func writeDeviceResource(device models.Device, resourceName string, attributes s
 
 	// execute protocol-specific write operation
 	driver := container.ProtocolDriverFrom(dic.Get)
-	err := driver.HandleWriteCommands(device.Name, device.Protocols, reqs, []*sdkModels.CommandValue{cv})
+	err := driver.HandleWriteCommands(node.Name, node.Protocols, reqs, []*sdkModels.CommandValue{cv})
 	if err != nil {
-		errMsg := fmt.Sprintf("error writing DeviceResource %s for %s", dr.Name, device.Name)
+		errMsg := fmt.Sprintf("error writing Resource %s for %s", dr.Name, node.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	// Updated resource value will be published to MessageBus as long as it's not write-only
 	if dr.Properties.ReadWrite != common.ReadWrite_W {
-		return transformer.CommandValuesToEventDTO([]*sdkModels.CommandValue{cv}, device.Name, resourceName, configuration.Device.DataTransform, dic)
+		return transformer.CommandValuesToEventDTO([]*sdkModels.CommandValue{cv}, node.Name, resourceName, configuration.Node.DataTransform, dic)
 	}
 
 	return nil, nil
 }
 
-func writeDeviceCommand(device models.Device, commandName string, attributes string, requests map[string]any, dic *di.Container) (*dtos.Event, errors.EdgeX) {
-	dc, ok := cache.Profiles().DeviceCommand(device.ProfileName, commandName)
+func writeCommand(node models.Node, commandName string, attributes string, requests map[string]any, dic *di.Container) (*dtos.Event, errors.EdgeX) {
+	dc, ok := cache.Profiles().Command(node.ProfileName, commandName)
 	if !ok {
-		errMsg := fmt.Sprintf("DeviceCommand %s not found", commandName)
+		errMsg := fmt.Sprintf("Command %s not found", commandName)
 		return nil, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 	}
-	// check deviceCommand is not read-only
+	// check command is not read-only
 	if dc.ReadWrite == common.ReadWrite_R {
-		errMsg := fmt.Sprintf("DeviceCommand %s is marked as read-only", dc.Name)
+		errMsg := fmt.Sprintf("Command %s is marked as read-only", dc.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindNotAllowed, errMsg, nil)
 	}
 	// check ResourceOperation count does not exceed MaxCmdOps defined in configuration
 	configuration := container.ConfigurationFrom(dic.Get)
-	if len(dc.ResourceOperations) > configuration.Device.MaxCmdOps {
-		errMsg := fmt.Sprintf("SET command %s exceed device %s MaxCmdOps (%d)", dc.Name, device.Name, configuration.Device.MaxCmdOps)
+	if len(dc.ResourceOperations) > configuration.Node.MaxCmdOps {
+		errMsg := fmt.Sprintf("SET command %s exceed node %s MaxCmdOps (%d)", dc.Name, node.Name, configuration.Node.MaxCmdOps)
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, nil)
 	}
 
 	// create CommandValues
 	cvs := make([]*sdkModels.CommandValue, 0, len(requests))
 	for _, ro := range dc.ResourceOperations {
-		drName := ro.DeviceResource
-		// check the deviceResource in ResourceOperation actually exist
-		dr, ok := cache.Profiles().DeviceResource(device.ProfileName, drName)
+		drName := ro.Resource
+		// check the resource in ResourceOperation actually exist
+		dr, ok := cache.Profiles().Resource(node.ProfileName, drName)
 		if !ok {
-			errMsg := fmt.Sprintf("DeviceResource %s in SET commnd %s for %s not defined", drName, dc.Name, device.Name)
+			errMsg := fmt.Sprintf("Resource %s in SET commnd %s for %s not defined", drName, dc.Name, node.Name)
 			return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, nil)
 		}
 
-		// check request body contains the deviceResource
-		value, ok := requests[ro.DeviceResource]
+		// check request body contains the resource
+		value, ok := requests[ro.Resource]
 		if !ok {
 			if ro.DefaultValue != "" {
 				value = ro.DefaultValue
 			} else if dr.Properties.DefaultValue != "" {
 				value = dr.Properties.DefaultValue
 			} else {
-				errMsg := fmt.Sprintf("DeviceResource %s not found in request body and no default value defined", dr.Name)
+				errMsg := fmt.Sprintf("Resource %s not found in request body and no default value defined", dr.Name)
 				return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, nil)
 			}
 		}
@@ -395,7 +395,7 @@ func writeDeviceCommand(device models.Device, commandName string, attributes str
 		}
 
 		// create CommandValue
-		cv, err := createCommandValueFromDeviceResource(dr, value)
+		cv, err := createCommandValueFromResource(dr, value)
 		if err == nil {
 			cvs = append(cvs, cv)
 		} else {
@@ -406,9 +406,9 @@ func writeDeviceCommand(device models.Device, commandName string, attributes str
 	// prepare CommandRequests
 	reqs := make([]sdkModels.CommandRequest, len(cvs))
 	for i, cv := range cvs {
-		dr, _ := cache.Profiles().DeviceResource(device.ProfileName, cv.DeviceResourceName)
+		dr, _ := cache.Profiles().Resource(node.ProfileName, cv.ResourceName)
 
-		reqs[i].DeviceResourceName = cv.DeviceResourceName
+		reqs[i].ResourceName = cv.ResourceName
 		reqs[i].Attributes = dr.Attributes
 		if attributes != "" {
 			if len(reqs[i].Attributes) <= 0 {
@@ -419,7 +419,7 @@ func writeDeviceCommand(device models.Device, commandName string, attributes str
 		reqs[i].Type = cv.Type
 
 		// transform write value
-		if configuration.Device.DataTransform {
+		if configuration.Node.DataTransform {
 			err := transformer.TransformWriteParameter(cv, dr.Properties)
 			if err != nil {
 				return nil, errors.NewCommonEdgeX(errors.KindContractInvalid, "failed to transform set parameter", err)
@@ -429,66 +429,66 @@ func writeDeviceCommand(device models.Device, commandName string, attributes str
 
 	// execute protocol-specific write operation
 	driver := container.ProtocolDriverFrom(dic.Get)
-	err := driver.HandleWriteCommands(device.Name, device.Protocols, reqs, cvs)
+	err := driver.HandleWriteCommands(node.Name, node.Protocols, reqs, cvs)
 	if err != nil {
-		errMsg := fmt.Sprintf("error writing DeviceCommand %s for %s", dc.Name, device.Name)
+		errMsg := fmt.Sprintf("error writing Command %s for %s", dc.Name, node.Name)
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	// Updated resource(s) value will be published to MessageBus as long as they're not write-only
 	if dc.ReadWrite != common.ReadWrite_W {
-		return transformer.CommandValuesToEventDTO(cvs, device.Name, commandName, configuration.Device.DataTransform, dic)
+		return transformer.CommandValuesToEventDTO(cvs, node.Name, commandName, configuration.Node.DataTransform, dic)
 	}
 
 	return nil, nil
 }
 
-func validateServiceAndDeviceState(deviceName string, dic *di.Container) (models.Device, errors.EdgeX) {
-	// check device service AdminState
-	ds := container.DeviceServiceFrom(dic.Get)
+func validateServiceAndNodeState(nodeName string, dic *di.Container) (models.Node, errors.EdgeX) {
+	// check node service AdminState
+	ds := container.NodeServiceFrom(dic.Get)
 	if ds.AdminState == models.Locked {
-		return models.Device{}, errors.NewCommonEdgeX(errors.KindServiceLocked, "service locked", nil)
+		return models.Node{}, errors.NewCommonEdgeX(errors.KindServiceLocked, "service locked", nil)
 	}
 
-	// check requested device exists
-	device, ok := cache.Devices().ForName(deviceName)
+	// check requested node exists
+	node, ok := cache.Nodes().ForName(nodeName)
 	if !ok {
-		return models.Device{}, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, fmt.Sprintf("device %s not found", deviceName), nil)
+		return models.Node{}, errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, fmt.Sprintf("node %s not found", nodeName), nil)
 	}
 
-	// check device's AdminState
-	if device.AdminState == models.Locked {
-		return models.Device{}, errors.NewCommonEdgeX(errors.KindServiceLocked, fmt.Sprintf("device %s locked", device.Name), nil)
+	// check node's AdminState
+	if node.AdminState == models.Locked {
+		return models.Node{}, errors.NewCommonEdgeX(errors.KindServiceLocked, fmt.Sprintf("node %s locked", node.Name), nil)
 	}
-	// check device's OperatingState
-	// if it's a device return attempt, operating state is allowed to be DOWN
-	if device.OperatingState == models.Down {
-		err := errors.NewCommonEdgeX(errors.KindServiceLocked, fmt.Sprintf("device %s OperatingState is DOWN", device.Name), nil)
+	// check node's OperatingState
+	// if it's a node return attempt, operating state is allowed to be DOWN
+	if node.OperatingState == models.Down {
+		err := errors.NewCommonEdgeX(errors.KindServiceLocked, fmt.Sprintf("node %s OperatingState is DOWN", node.Name), nil)
 		config := container.ConfigurationFrom(dic.Get)
-		if config.Device.AllowedFails == 0 || config.Device.DeviceDownTimeout == 0 {
-			return models.Device{}, err
+		if config.Node.AllowedFails == 0 || config.Node.NodeDownTimeout == 0 {
+			return models.Node{}, err
 		}
 		reqFailsTracker := container.AllowedRequestFailuresTrackerFrom(dic.Get)
-		if reqFailsTracker.Value(deviceName) > 0 {
-			return models.Device{}, err
+		if reqFailsTracker.Value(nodeName) > 0 {
+			return models.Node{}, err
 		}
 	}
 
-	// check device's ProfileName
-	if device.ProfileName == "" {
-		return models.Device{}, errors.NewCommonEdgeX(errors.KindServiceLocked, "no associated device profile", nil)
+	// check node's ProfileName
+	if node.ProfileName == "" {
+		return models.Node{}, errors.NewCommonEdgeX(errors.KindServiceLocked, "no associated node profile", nil)
 	}
 
-	return device, nil
+	return node, nil
 }
 
-func createCommandValueFromDeviceResource(dr models.DeviceResource, value interface{}) (*sdkModels.CommandValue, errors.EdgeX) {
+func createCommandValueFromResource(dr models.Resource, value interface{}) (*sdkModels.CommandValue, errors.EdgeX) {
 	if value == nil {
 		return &sdkModels.CommandValue{
-			DeviceResourceName: dr.Name,
-			Type:               dr.Properties.ValueType,
-			Value:              value,
-			Tags:               make(map[string]string)}, nil
+			ResourceName: dr.Name,
+			Type:         dr.Properties.ValueType,
+			Value:        value,
+			Tags:         make(map[string]string)}, nil
 	}
 
 	var err error
@@ -783,7 +783,7 @@ func normalizeToObject(value any) (map[string]any, error) {
 
 	var m map[string]any
 	switch v := value.(type) {
-	case string: // Support string defaultValue in device profiles
+	case string: // Support string defaultValue in node profiles
 		if err := json.Unmarshal([]byte(v), &m); err != nil {
 			return nil, fmt.Errorf("failed to convert set parameter %s to ValueType %s", v, common.ValueTypeObject)
 		}
@@ -803,7 +803,7 @@ func normalizeToObjectArray(value any) ([]map[string]any, error) {
 
 	var arr []map[string]any
 	switch v := value.(type) {
-	case string: // Support string defaultValue in device profiles
+	case string: // Support string defaultValue in node profiles
 		if err := json.Unmarshal([]byte(v), &arr); err != nil {
 			return nil, fmt.Errorf("failed to convert set parameter %s to ValueType %s", v, common.ValueTypeObjectArray)
 		}

@@ -6,7 +6,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// Package service provides a basic EdgeX Foundry device service implementation
+// Package service provides a basic EdgeX Foundry node service implementation
 // meant to be embedded in an application, similar in approach to the builtin
 // net/http package.
 package service
@@ -25,15 +25,15 @@ import (
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/startup"
 	"github.com/panjf2000/ants/v2"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/autodiscovery"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/autoevent"
-	sdkCommon "github.com/edgexfoundry/device-sdk-go/v4/internal/common"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	restController "github.com/edgexfoundry/device-sdk-go/v4/internal/controller/http"
-	sdkUtils "github.com/edgexfoundry/device-sdk-go/v4/internal/utils"
-	"github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/autodiscovery"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/autoevent"
+	sdkCommon "github.com/edgexfoundry/south-sdk-go/v4/internal/common"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	restController "github.com/edgexfoundry/south-sdk-go/v4/internal/controller/http"
+	sdkUtils "github.com/edgexfoundry/south-sdk-go/v4/internal/utils"
+	"github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 
 	bootstrapConfig "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/config"
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
@@ -53,39 +53,39 @@ import (
 
 const EnvInstanceName = "EDGEX_INSTANCE_NAME"
 
-type deviceService struct {
-	serviceKey         string
-	baseServiceName    string
-	lc                 logger.LoggingClient
-	driver             interfaces.ProtocolDriver
-	extdriver          interfaces.ExtendedProtocolDriver
-	autoEventManager   interfaces.AutoEventManager
-	commonController   *controller.CommonController
-	controller         *restController.RestController
-	asyncCh            chan *sdkModels.AsyncValues
-	deviceCh           chan []sdkModels.DiscoveredDevice
-	flags              *flags.Default
-	overwriteDevices   bool
-	overwriteProfiles  bool
-	deviceServiceModel *models.DeviceService
-	config             *config.ConfigurationStruct
-	configProcessor    *bootstrapConfig.Processor
-	wg                 *sync.WaitGroup
-	ctx                context.Context
-	dic                *di.Container
-	pool               *ants.Pool
+type nodeService struct {
+	serviceKey        string
+	baseServiceName   string
+	lc                logger.LoggingClient
+	driver            interfaces.ProtocolDriver
+	extdriver         interfaces.ExtendedProtocolDriver
+	autoEventManager  interfaces.AutoEventManager
+	commonController  *controller.CommonController
+	controller        *restController.RestController
+	asyncCh           chan *sdkModels.AsyncValues
+	nodeCh            chan []sdkModels.DiscoveredNode
+	flags             *flags.Default
+	overwriteNodes    bool
+	overwriteProfiles bool
+	nodeServiceModel  *models.NodeService
+	config            *config.ConfigurationStruct
+	configProcessor   *bootstrapConfig.Processor
+	wg                *sync.WaitGroup
+	ctx               context.Context
+	dic               *di.Container
+	pool              *ants.Pool
 }
 
-// NewDeviceService returns an implementation of interfaces.DeviceServiceSDKExt for the specified key, version, and driver.
-func NewDeviceService(serviceKey string, serviceVersion string, driver interfaces.ProtocolDriver) (interfaces.DeviceServiceSDK, error) {
-	var service deviceService
+// NewNodeService returns an implementation of interfaces.NodeServiceSDKExt for the specified key, version, and driver.
+func NewNodeService(serviceKey string, serviceVersion string, driver interfaces.ProtocolDriver) (interfaces.NodeServiceSDK, error) {
+	var service nodeService
 	if serviceKey == "" {
-		return nil, errors.New("please specify device service name")
+		return nil, errors.New("please specify node service name")
 	}
 	service.serviceKey = serviceKey
 
 	if serviceVersion == "" {
-		return nil, errors.New("please specify device service version")
+		return nil, errors.New("please specify node service version")
 	}
 	sdkCommon.ServiceVersion = serviceVersion
 
@@ -98,22 +98,22 @@ func NewDeviceService(serviceKey string, serviceVersion string, driver interface
 	}
 
 	service.config = &config.ConfigurationStruct{}
-	return interfaces.DeviceServiceSDK(&service), nil
+	return interfaces.NodeServiceSDK(&service), nil
 }
 
-func (s *deviceService) Run() error {
+func (s *nodeService) Run() error {
 	var instanceName string
-	var overwriteDevices bool
+	var overwriteNodes bool
 	var overwriteProfiles bool
 	startupTimer := startup.NewStartUpTimer(s.serviceKey)
 
 	additionalUsage :=
-		"    -op, --overwriteProfiles     Overwrite core-metadata with the versions of the associated device profile files.\n" +
+		"    -op, --overwriteProfiles     Overwrite core-metadata with the versions of the associated node profile files.\n" +
 			"                                 *** Use with cation *** Use will clobber existing profiles in core-metadata,\n" +
 			"                                 problematic if those profiles were edited by hand intentionally or used by other services.\n" +
-			"    -od, --overwriteDevices      Overwrite core-metadata with the versions of the associated device files.\n" +
-			"                                 *** Use with cation *** Use will clobber existing devices in core-metadata,\n" +
-			"                                 problematic if those devices were edited by hand intentionally.\n" +
+			"    -od, --overwriteNodes      Overwrite core-metadata with the versions of the associated node files.\n" +
+			"                                 *** Use with cation *** Use will clobber existing nodes in core-metadata,\n" +
+			"                                 problematic if those nodes were edited by hand intentionally.\n" +
 			"    -i, --instance                  Provides a service name suffix which allows unique instance to be created\n" +
 			"                                    If the option is provided, service name will be replaced with \"<name>_<instance>\"\n"
 	s.flags = flags.NewWithUsage(additionalUsage)
@@ -121,22 +121,22 @@ func (s *deviceService) Run() error {
 	s.flags.FlagSet.StringVar(&instanceName, "i", "", "")
 	s.flags.FlagSet.BoolVar(&overwriteProfiles, "op", false, "")
 	s.flags.FlagSet.BoolVar(&overwriteProfiles, "overwriteProfiles", false, "")
-	s.flags.FlagSet.BoolVar(&overwriteDevices, "od", false, "")
-	s.flags.FlagSet.BoolVar(&overwriteDevices, "overwriteDevices", false, "")
+	s.flags.FlagSet.BoolVar(&overwriteNodes, "od", false, "")
+	s.flags.FlagSet.BoolVar(&overwriteNodes, "overwriteNodes", false, "")
 	s.flags.Parse(os.Args[1:])
 	s.setServiceName(instanceName)
-	s.overwriteDevices = overwriteDevices
+	s.overwriteNodes = overwriteNodes
 	s.overwriteProfiles = overwriteProfiles
 
 	s.config = &config.ConfigurationStruct{}
-	s.deviceServiceModel = &models.DeviceService{Name: s.serviceKey}
+	s.nodeServiceModel = &models.NodeService{Name: s.serviceKey}
 
 	s.dic = di.NewContainer(di.ServiceConstructorMap{
 		container.ConfigurationName: func(get di.Get) any {
 			return s.config
 		},
-		container.DeviceServiceName: func(get di.Get) any {
-			return s.deviceServiceModel
+		container.NodeServiceName: func(get di.Get) any {
+			return s.nodeServiceModel
 		},
 		container.ProtocolDriverName: func(get di.Get) any {
 			return s.driver
@@ -146,9 +146,9 @@ func (s *deviceService) Run() error {
 		},
 	})
 
-	// set poolSize to config.Device.AsyncBufferSize
+	// set poolSize to config.Node.AsyncBufferSize
 	config := container.ConfigurationFrom(s.dic.Get)
-	pool, err := ants.NewPool(config.Device.AsyncBufferSize)
+	pool, err := ants.NewPool(config.Node.AsyncBufferSize)
 	if err != nil {
 		return err
 	}
@@ -163,13 +163,13 @@ func (s *deviceService) Run() error {
 		cancel,
 		s.flags,
 		s.serviceKey,
-		common.ConfigStemDevice,
+		common.ConfigStemNode,
 		s.config,
 		nil,
 		startupTimer,
 		s.dic,
 		true,
-		bootstrapTypes.ServiceTypeDevice,
+		bootstrapTypes.ServiceTypeNode,
 		[]bootstrapInterfaces.BootstrapHandler{
 			newMessageBusBootstrap(s.baseServiceName).messageBusBootstrapHandler,
 			handlers.NewServiceMetrics(s.serviceKey).BootstrapHandler, // Must be after Messaging
@@ -202,29 +202,29 @@ func (s *deviceService) Run() error {
 	return nil
 }
 
-// Name returns the name of this Device Service
-func (s *deviceService) Name() string {
+// Name returns the name of this Node Service
+func (s *nodeService) Name() string {
 	return s.serviceKey
 }
 
-// Version returns the version number of this Device Service
-func (s *deviceService) Version() string {
+// Version returns the version number of this Node Service
+func (s *nodeService) Version() string {
 	return sdkCommon.ServiceVersion
 }
 
 // SecretProvider returns the SecretProvider
-func (s *deviceService) SecretProvider() bootstrapInterfaces.SecretProvider {
+func (s *nodeService) SecretProvider() bootstrapInterfaces.SecretProvider {
 	return bootstrapContainer.SecretProviderFrom(s.dic.Get)
 }
 
 // MetricsManager returns the Metrics Manager used to register counter, gauge, gaugeFloat64 or timer metric types from
 // github.com/rcrowley/go-metrics
-func (s *deviceService) MetricsManager() bootstrapInterfaces.MetricsManager {
+func (s *nodeService) MetricsManager() bootstrapInterfaces.MetricsManager {
 	return bootstrapContainer.MetricsManagerFrom(s.dic.Get)
 }
 
 // LoggingClient returns the logger.LoggingClient
-func (s *deviceService) LoggingClient() logger.LoggingClient {
+func (s *nodeService) LoggingClient() logger.LoggingClient {
 	if s.lc == nil {
 		s.lc = bootstrapContainer.LoggingClientFrom(s.dic.Get)
 	}
@@ -232,25 +232,25 @@ func (s *deviceService) LoggingClient() logger.LoggingClient {
 }
 
 // AsyncReadingsEnabled returns a bool value to indicate whether the asynchronous reading is enabled.
-func (s *deviceService) AsyncReadingsEnabled() bool {
-	return s.config.Device.EnableAsyncReadings
+func (s *nodeService) AsyncReadingsEnabled() bool {
+	return s.config.Node.EnableAsyncReadings
 }
 
-func (s *deviceService) AsyncValuesChannel() chan *sdkModels.AsyncValues {
+func (s *nodeService) AsyncValuesChannel() chan *sdkModels.AsyncValues {
 	return s.asyncCh
 }
 
-// DeviceDiscoveryEnabled returns a bool value to indicate whether the device discovery is enabled.
-func (s *deviceService) DeviceDiscoveryEnabled() bool {
-	return s.config.Device.Discovery.Enabled
+// NodeDiscoveryEnabled returns a bool value to indicate whether the node discovery is enabled.
+func (s *nodeService) NodeDiscoveryEnabled() bool {
+	return s.config.Node.Discovery.Enabled
 }
 
-func (s *deviceService) DiscoveredDeviceChannel() chan []sdkModels.DiscoveredDevice {
-	return s.deviceCh
+func (s *nodeService) DiscoveredNodeChannel() chan []sdkModels.DiscoveredNode {
+	return s.nodeCh
 }
 
-// AddCustomRoute allows leveraging the existing internal web server to add routes specific to Device Service.
-func (s *deviceService) AddCustomRoute(route string, authentication interfaces.Authentication, handler func(e echo.Context) error, methods ...string) error {
+// AddCustomRoute allows leveraging the existing internal web server to add routes specific to Node Service.
+func (s *nodeService) AddCustomRoute(route string, authentication interfaces.Authentication, handler func(e echo.Context) error, methods ...string) error {
 	if authentication == interfaces.Authenticated {
 		authenticationHook := handlers.AutoConfigAuthenticationFunc(s.dic)
 
@@ -262,7 +262,7 @@ func (s *deviceService) AddCustomRoute(route string, authentication interfaces.A
 // LoadCustomConfig uses the Config Processor from go-mod-bootstrap to attempt to load service's
 // custom configuration. It uses the same command line flags to process the custom config in the same manner
 // as the standard configuration.
-func (s *deviceService) LoadCustomConfig(customConfig interfaces.UpdatableConfig, sectionName string) error {
+func (s *nodeService) LoadCustomConfig(customConfig interfaces.UpdatableConfig, sectionName string) error {
 	if s.configProcessor == nil {
 		s.configProcessor = bootstrapConfig.NewProcessorForCustomConfig(s.flags, s.ctx, s.wg, s.dic)
 	}
@@ -280,7 +280,7 @@ func (s *deviceService) LoadCustomConfig(customConfig interfaces.UpdatableConfig
 // ListenForCustomConfigChanges uses the Config Processor from go-mod-bootstrap to attempt to listen for
 // changes to the specified custom configuration section. LoadCustomConfig must be called previously so that
 // the instance of svc.configProcessor has already been set.
-func (s *deviceService) ListenForCustomConfigChanges(
+func (s *nodeService) ListenForCustomConfigChanges(
 	configToWatch interface{},
 	sectionName string,
 	changedCallback func(interface{})) error {
@@ -294,45 +294,45 @@ func (s *deviceService) ListenForCustomConfigChanges(
 	return nil
 }
 
-// selfRegister register device service itself onto metadata.
-func (s *deviceService) selfRegister() edgexErr.EdgeX {
-	localDeviceService := models.DeviceService{
+// selfRegister register node service itself onto metadata.
+func (s *nodeService) selfRegister() edgexErr.EdgeX {
+	localNodeService := models.NodeService{
 		Name:        s.serviceKey,
-		Labels:      s.config.Device.Labels,
+		Labels:      s.config.Node.Labels,
 		BaseAddress: bootstrapTypes.DefaultHttpProtocol + "://" + s.config.Service.Host + ":" + strconv.FormatInt(int64(s.config.Service.Port), 10),
 		AdminState:  models.Unlocked,
 		Properties:  make(map[string]any),
 	}
-	*s.deviceServiceModel = localDeviceService
+	*s.nodeServiceModel = localNodeService
 	ctx := context.WithValue(context.Background(), common.CorrelationHeader, uuid.NewString()) // nolint:staticcheck
-	dsc := bootstrapContainer.DeviceServiceClientFrom(s.dic.Get)
+	dsc := bootstrapContainer.NodeServiceClientFrom(s.dic.Get)
 
-	s.lc.Debugf("trying to find device service %s", localDeviceService.Name)
-	res, err := dsc.DeviceServiceByName(ctx, localDeviceService.Name)
+	s.lc.Debugf("trying to find node service %s", localNodeService.Name)
+	res, err := dsc.NodeServiceByName(ctx, localNodeService.Name)
 	if err != nil {
 		if edgexErr.Kind(err) == edgexErr.KindEntityDoesNotExist {
-			s.lc.Infof("device service %s doesn't exist, creating a new one", localDeviceService.Name)
-			req := requests.NewAddDeviceServiceRequest(dtos.FromDeviceServiceModelToDTO(localDeviceService))
-			idRes, err := dsc.Add(ctx, []requests.AddDeviceServiceRequest{req})
+			s.lc.Infof("node service %s doesn't exist, creating a new one", localNodeService.Name)
+			req := requests.NewAddNodeServiceRequest(dtos.FromNodeServiceModelToDTO(localNodeService))
+			idRes, err := dsc.Add(ctx, []requests.AddNodeServiceRequest{req})
 			if err != nil {
-				s.lc.Errorf("failed to add device service %s: %v", localDeviceService.Name, err)
+				s.lc.Errorf("failed to add node service %s: %v", localNodeService.Name, err)
 				return err
 			}
-			s.deviceServiceModel.Id = idRes[0].Id
-			s.lc.Debugf("new device service id: %s", localDeviceService.Id)
+			s.nodeServiceModel.Id = idRes[0].Id
+			s.lc.Debugf("new node service id: %s", localNodeService.Id)
 		} else {
-			s.lc.Errorf("failed to find device service %s", localDeviceService.Name)
+			s.lc.Errorf("failed to find node service %s", localNodeService.Name)
 			return err
 		}
 	} else {
-		s.lc.Infof("device service %s exists, updating it", s.serviceKey)
-		req := requests.NewUpdateDeviceServiceRequest(dtos.FromDeviceServiceModelToUpdateDTO(localDeviceService))
+		s.lc.Infof("node service %s exists, updating it", s.serviceKey)
+		req := requests.NewUpdateNodeServiceRequest(dtos.FromNodeServiceModelToUpdateDTO(localNodeService))
 		req.Service.Id = nil
-		_, err = dsc.Update(ctx, []requests.UpdateDeviceServiceRequest{req})
+		_, err = dsc.Update(ctx, []requests.UpdateNodeServiceRequest{req})
 		if err != nil {
-			s.lc.Errorf("failed to update device service %s with local config: %v", localDeviceService.Name, err)
-			oldDeviceService := dtos.ToDeviceServiceModel(res.Service)
-			*s.deviceServiceModel = oldDeviceService
+			s.lc.Errorf("failed to update node service %s with local config: %v", localNodeService.Name, err)
+			oldNodeService := dtos.ToNodeServiceModel(res.Service)
+			*s.nodeServiceModel = oldNodeService
 		}
 	}
 
@@ -340,19 +340,19 @@ func (s *deviceService) selfRegister() edgexErr.EdgeX {
 }
 
 // DriverConfigs retrieves the driver specific configuration
-func (s *deviceService) DriverConfigs() map[string]string {
+func (s *nodeService) DriverConfigs() map[string]string {
 	return s.config.Driver
 }
 
 // Stop shuts down the Service
-func (s *deviceService) Stop(force bool) {
+func (s *nodeService) Stop(force bool) {
 	err := s.driver.Stop(force)
 	if err != nil {
 		s.lc.Errorf(err.Error())
 	}
 }
 
-func (s *deviceService) setServiceName(instanceName string) {
+func (s *nodeService) setServiceName(instanceName string) {
 	envValue := os.Getenv(EnvInstanceName)
 	if len(envValue) > 0 {
 		instanceName = envValue
@@ -366,20 +366,20 @@ func (s *deviceService) setServiceName(instanceName string) {
 	}
 }
 
-// PublishDeviceDiscoveryProgressSystemEvent sends a system event to the EdgeX Message Bus
-// indicating the progress of the device discovery process.
-func (s *deviceService) PublishDeviceDiscoveryProgressSystemEvent(progress, discoveredDeviceCount int, message string) {
+// PublishNodeDiscoveryProgressSystemEvent sends a system event to the EdgeX Message Bus
+// indicating the progress of the node discovery process.
+func (s *nodeService) PublishNodeDiscoveryProgressSystemEvent(progress, discoveredNodeCount int, message string) {
 	reqId := container.DiscoveryRequestIdFrom(s.dic.Get)
-	sdkUtils.PublishDeviceDiscoveryProgressSystemEvent(reqId, progress, discoveredDeviceCount, message, s.ctx, s.dic)
+	sdkUtils.PublishNodeDiscoveryProgressSystemEvent(reqId, progress, discoveredNodeCount, message, s.ctx, s.dic)
 }
 
 // PublishProfileScanProgressSystemEvent sends a system event to the EdgeX Message Bus
 // indicating the progress of the profile scan process.
-func (s *deviceService) PublishProfileScanProgressSystemEvent(reqId string, progress int, message string) {
+func (s *nodeService) PublishProfileScanProgressSystemEvent(reqId string, progress int, message string) {
 	sdkUtils.PublishProfileScanProgressSystemEvent(reqId, progress, message, s.ctx, s.dic)
 }
 
 // PublishGenericSystemEvent sends a system event to the EdgeX Message Bus
-func (s *deviceService) PublishGenericSystemEvent(eventType, action string, details any) {
+func (s *nodeService) PublishGenericSystemEvent(eventType, action string, details any) {
 	sdkUtils.PublishGenericSystemEvent(eventType, action, details, s.ctx, s.dic)
 }

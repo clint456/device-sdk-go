@@ -27,48 +27,48 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	driverMocks "github.com/edgexfoundry/device-sdk-go/v4/pkg/interfaces/mocks"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	driverMocks "github.com/edgexfoundry/south-sdk-go/v4/pkg/interfaces/mocks"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 )
 
 const (
 	testCmdServiceName  = "testCmdService"
-	testCmdDeviceA      = "deviceA"
-	testCmdDeviceB      = "deviceB"
+	testCmdNodeA        = "nodeA"
+	testCmdNodeB        = "nodeB"
 	testCmdProfile      = "testCmdProfile"
 	testCmdResourceName = "tempSensor"
 )
 
-// newCommandTestDIC builds a DIC and initializes the device/profile cache so that
+// newCommandTestDIC builds a DIC and initializes the node/profile cache so that
 // application.GetCommand can run through to driver.HandleReadCommands.
 func newCommandTestDIC(t *testing.T, maxConcurrent int, driver *driverMocks.ProtocolDriver) *di.Container {
 	t.Helper()
 
 	cfg := &config.ConfigurationStruct{
 		MaxConcurrentCommands: maxConcurrent,
-		Device:                config.DeviceInfo{MaxCmdOps: 1},
+		Node:                  config.NodeInfo{MaxCmdOps: 1},
 	}
-	deviceService := &models.DeviceService{Name: testCmdServiceName, AdminState: models.Unlocked}
+	nodeService := &models.NodeService{Name: testCmdServiceName, AdminState: models.Unlocked}
 
-	devices := responses.MultiDevicesResponse{
-		Devices: []dtos.Device{
+	nodes := responses.MultiNodesResponse{
+		Nodes: []dtos.Node{
 			{
-				Name: testCmdDeviceA, ProfileName: testCmdProfile, ServiceName: testCmdServiceName,
+				Name: testCmdNodeA, ProfileName: testCmdProfile, ServiceName: testCmdServiceName,
 				AdminState: models.Unlocked, OperatingState: models.Up,
 			},
 			{
-				Name: testCmdDeviceB, ProfileName: testCmdProfile, ServiceName: testCmdServiceName,
+				Name: testCmdNodeB, ProfileName: testCmdProfile, ServiceName: testCmdServiceName,
 				AdminState: models.Unlocked, OperatingState: models.Up,
 			},
 		},
 	}
-	profile := responses.DeviceProfileResponse{
-		Profile: dtos.DeviceProfile{
-			DeviceProfileBasicInfo: dtos.DeviceProfileBasicInfo{Name: testCmdProfile},
-			DeviceResources: []dtos.DeviceResource{
+	profile := responses.ProfileResponse{
+		Profile: dtos.Profile{
+			ProfileBasicInfo: dtos.ProfileBasicInfo{Name: testCmdProfile},
+			Resources: []dtos.Resource{
 				{
 					Name: testCmdResourceName,
 					Properties: dtos.ResourceProperties{
@@ -80,11 +80,11 @@ func newCommandTestDIC(t *testing.T, maxConcurrent int, driver *driverMocks.Prot
 		},
 	}
 
-	dcMock := &clientMocks.DeviceClient{}
-	dcMock.On("DevicesByServiceName", context.Background(), testCmdServiceName, 0, -1).Return(devices, nil)
+	dcMock := &clientMocks.NodeClient{}
+	dcMock.On("NodesByServiceName", context.Background(), testCmdServiceName, 0, -1).Return(nodes, nil)
 
-	dpcMock := &clientMocks.DeviceProfileClient{}
-	dpcMock.On("DeviceProfileByName", context.Background(), testCmdProfile).Return(profile, nil)
+	dpcMock := &clientMocks.ProfileClient{}
+	dpcMock.On("ProfileByName", context.Background(), testCmdProfile).Return(profile, nil)
 
 	pwcMock := &clientMocks.ProvisionWatcherClient{}
 	pwcMock.On("ProvisionWatchersByServiceName", context.Background(), testCmdServiceName, 0, -1).
@@ -98,12 +98,12 @@ func newCommandTestDIC(t *testing.T, maxConcurrent int, driver *driverMocks.Prot
 
 	dic := di.NewContainer(di.ServiceConstructorMap{
 		container.ConfigurationName:                    func(_ di.Get) any { return cfg },
-		container.DeviceServiceName:                    func(_ di.Get) any { return deviceService },
+		container.NodeServiceName:                      func(_ di.Get) any { return nodeService },
 		container.ProtocolDriverName:                   func(_ di.Get) any { return driver },
 		container.AllowedRequestFailuresTrackerName:    func(_ di.Get) any { return failsTracker },
 		bootstrapContainer.LoggingClientInterfaceName:  func(_ di.Get) any { return logger.NewMockClient() },
-		bootstrapContainer.DeviceClientName:            func(_ di.Get) any { return dcMock },
-		bootstrapContainer.DeviceProfileClientName:     func(_ di.Get) any { return dpcMock },
+		bootstrapContainer.NodeClientName:              func(_ di.Get) any { return dcMock },
+		bootstrapContainer.ProfileClientName:           func(_ di.Get) any { return dpcMock },
 		bootstrapContainer.ProvisionWatcherClientName:  func(_ di.Get) any { return pwcMock },
 		bootstrapContainer.MetricsManagerInterfaceName: func(_ di.Get) any { return mm },
 	})
@@ -112,12 +112,12 @@ func newCommandTestDIC(t *testing.T, maxConcurrent int, driver *driverMocks.Prot
 	return dic
 }
 
-func makeGetEnvelope(deviceName string) types.MessageEnvelope {
+func makeGetEnvelope(nodeName string) types.MessageEnvelope {
 	return types.MessageEnvelope{
 		RequestID:     uuid.NewString(),
 		CorrelationID: uuid.NewString(),
 		ContentType:   common.ContentTypeJSON,
-		ReceivedTopic: "edgex/command/request/" + testCmdServiceName + "/" + deviceName + "/" + testCmdResourceName + "/get",
+		ReceivedTopic: "edgex/command/request/" + testCmdServiceName + "/" + nodeName + "/" + testCmdResourceName + "/get",
 		// ds-returnevent=false avoids the test needing to produce a real *dtos.Event from the
 		// (empty) driver response — we're testing dispatch concurrency, not event marshaling.
 		QueryParams: map[string]string{common.ReturnEvent: common.ValueFalse},
@@ -177,8 +177,8 @@ func (p *messagingProbe) waitForPublishes(t *testing.T, n int32) {
 		3*time.Second, 5*time.Millisecond, "expected %d publishes, got %d", n, p.totalCount.Load())
 }
 
-// Test_SubscribeCommands_secondRunsWhileFirstBlocked proves the fix: a command to device B can
-// begin processing while a command to device A is still blocked inside the driver. With the
+// Test_SubscribeCommands_secondRunsWhileFirstBlocked proves the fix: a command to node B can
+// begin processing while a command to node A is still blocked inside the driver. With the
 // pre-fix code this would deadlock — the consumer goroutine would be stuck dispatching the first
 // command synchronously.
 func Test_SubscribeCommands_secondRunsWhileFirstBlocked(t *testing.T) {
@@ -201,18 +201,18 @@ func Test_SubscribeCommands_secondRunsWhileFirstBlocked(t *testing.T) {
 	require.NoError(t, SubscribeCommands(ctx, dic))
 
 	sub := probe.sub()
-	sub <- makeGetEnvelope(testCmdDeviceA)
+	sub <- makeGetEnvelope(testCmdNodeA)
 	require.Eventually(t, func() bool { return phase.Load() >= 1 },
 		2*time.Second, 5*time.Millisecond, "first driver call should have started")
 
-	sub <- makeGetEnvelope(testCmdDeviceB)
+	sub <- makeGetEnvelope(testCmdNodeB)
 	require.Eventually(t, func() bool { return phase.Load() >= 2 },
 		2*time.Second, 5*time.Millisecond,
 		"second driver call should run while first is blocked — HOL regression if it doesn't")
 
 	close(unblockFirst)
 	// Drain both worker goroutines before returning so they don't race with the next test's
-	// cache.InitCache (the device cache is a package-global singleton).
+	// cache.InitCache (the node cache is a package-global singleton).
 	probe.waitForPublishes(t, 2)
 }
 
@@ -238,11 +238,11 @@ func Test_SubscribeCommands_busyOnOverload(t *testing.T) {
 	require.NoError(t, SubscribeCommands(ctx, dic))
 
 	sub := probe.sub()
-	sub <- makeGetEnvelope(testCmdDeviceA)
+	sub <- makeGetEnvelope(testCmdNodeA)
 	require.Eventually(t, func() bool { return entered.Load() == 1 },
 		2*time.Second, 5*time.Millisecond, "first driver call should have entered")
 
-	sub <- makeGetEnvelope(testCmdDeviceB)
+	sub <- makeGetEnvelope(testCmdNodeB)
 	require.Eventually(t, func() bool { return probe.busyCount.Load() >= 1 },
 		2*time.Second, 10*time.Millisecond, "busy envelope should be published for the rejected request")
 

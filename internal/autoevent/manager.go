@@ -16,8 +16,8 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 	"github.com/panjf2000/ants/v2"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 )
 
 type manager struct {
@@ -51,7 +51,7 @@ func (b *Bootstrap) BootstrapHandler(
 		wg:              wg,
 		executorMap:     make(map[string][]*Executor),
 		dic:             dic,
-		autoeventBuffer: make(chan bool, config.Device.AsyncBufferSize),
+		autoeventBuffer: make(chan bool, config.Node.AsyncBufferSize),
 		pool:            b.pool,
 	}
 
@@ -68,9 +68,9 @@ func (m *manager) StartAutoEvents() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	for _, d := range cache.Devices().All() {
+	for _, d := range cache.Nodes().All() {
 		if len(d.ProfileName) == 0 || d.AdminState == models.Locked {
-			// don't run the auto event if the device doesn't define the profile, or it is locked
+			// don't run the auto event if the node doesn't define the profile, or it is locked
 			continue
 		}
 		if _, ok := m.executorMap[d.Name]; !ok {
@@ -80,14 +80,14 @@ func (m *manager) StartAutoEvents() {
 	}
 }
 
-func (m *manager) triggerExecutors(deviceName string, autoEvents []models.AutoEvent, dic *di.Container) []*Executor {
+func (m *manager) triggerExecutors(nodeName string, autoEvents []models.AutoEvent, dic *di.Container) []*Executor {
 	var executors []*Executor
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 
 	for _, autoEvent := range autoEvents {
-		executor, err := NewExecutor(deviceName, autoEvent, m.pool)
+		executor, err := NewExecutor(nodeName, autoEvent, m.pool)
 		if err != nil {
-			lc.Errorf("failed to create executor of AutoEvent %s for Device %s: %v", autoEvent.SourceName, deviceName, err)
+			lc.Errorf("failed to create executor of AutoEvent %s for Node %s: %v", autoEvent.SourceName, nodeName, err)
 			// skip this AutoEvent if it causes error during creation
 			continue
 		}
@@ -97,35 +97,35 @@ func (m *manager) triggerExecutors(deviceName string, autoEvents []models.AutoEv
 	return executors
 }
 
-func (m *manager) RestartForDevice(deviceName string) {
+func (m *manager) RestartForNode(nodeName string) {
 	lc := bootstrapContainer.LoggingClientFrom(m.dic.Get)
 
-	m.StopForDevice(deviceName)
-	d, ok := cache.Devices().ForName(deviceName)
+	m.StopForNode(nodeName)
+	d, ok := cache.Nodes().ForName(nodeName)
 	if !ok {
-		lc.Errorf("failed to find device %s in cache to start AutoEvent", deviceName)
+		lc.Errorf("failed to find node %s in cache to start AutoEvent", nodeName)
 	}
 
 	if len(d.ProfileName) == 0 || d.AdminState == models.Locked {
-		// don't run the auto event if the device doesn't define the profile, or it is locked
+		// don't run the auto event if the node doesn't define the profile, or it is locked
 		return
 	}
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	executors := m.triggerExecutors(deviceName, d.AutoEvents, m.dic)
-	m.executorMap[deviceName] = executors
+	executors := m.triggerExecutors(nodeName, d.AutoEvents, m.dic)
+	m.executorMap[nodeName] = executors
 }
 
-func (m *manager) StopForDevice(deviceName string) {
+func (m *manager) StopForNode(nodeName string) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	executors, ok := m.executorMap[deviceName]
+	executors, ok := m.executorMap[nodeName]
 	if ok {
 		for _, executor := range executors {
 			executor.Stop()
 		}
-		delete(m.executorMap, deviceName)
+		delete(m.executorMap, nodeName)
 	}
 }

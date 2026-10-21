@@ -20,8 +20,8 @@ var (
 type ProvisionWatcherCache interface {
 	ForName(name string) (models.ProvisionWatcher, bool)
 	All() []models.ProvisionWatcher
-	Add(device models.ProvisionWatcher) errors.EdgeX
-	Update(device models.ProvisionWatcher) errors.EdgeX
+	Add(node models.ProvisionWatcher) errors.EdgeX
+	Update(node models.ProvisionWatcher) errors.EdgeX
 	RemoveByName(name string) errors.EdgeX
 	UpdateAdminState(name string, state models.AdminState) errors.EdgeX
 }

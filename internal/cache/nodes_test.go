@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/config"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/config"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/interfaces/mocks"
@@ -24,14 +24,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testDevice = models.Device{
-	Name:           TestDevice,
+var testNode = models.Node{
+	Name:           TestNode,
 	AdminState:     models.Unlocked,
 	OperatingState: models.Up,
 }
 
-var newDevice = models.Device{
-	Name:           "newDevice",
+var newNode = models.Node{
+	Name:           "newNode",
 	AdminState:     models.Unlocked,
 	OperatingState: models.Unlocked,
 }
@@ -60,51 +60,51 @@ func mockDic() *di.Container {
 	})
 }
 
-func Test_deviceCache_ForName(t *testing.T) {
+func Test_nodeCache_ForName(t *testing.T) {
 	dic := mockDic()
-	newDeviceCache([]models.Device{testDevice}, dic)
+	newNodeCache([]models.Node{testNode}, dic)
 
 	tests := []struct {
-		name       string
-		deviceName string
-		device     models.Device
-		expected   bool
+		name     string
+		nodeName string
+		node     models.Node
+		expected bool
 	}{
-		{"Invalid - empty name", "", models.Device{}, false},
-		{"Invalid - nonexistent Device name", "nil", models.Device{}, false},
-		{"Valid", TestDevice, testDevice, true},
+		{"Invalid - empty name", "", models.Node{}, false},
+		{"Invalid - nonexistent Node name", "nil", models.Node{}, false},
+		{"Valid", TestNode, testNode, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, ok := dc.ForName(tt.deviceName)
-			assert.Equal(t, res, tt.device, "ForName returns wrong Device")
+			res, ok := dc.ForName(tt.nodeName)
+			assert.Equal(t, res, tt.node, "ForName returns wrong Node")
 			assert.Equal(t, ok, tt.expected, "ForName returns opposite result")
 		})
 	}
 }
 
-func Test_deviceCache_All(t *testing.T) {
+func Test_nodeCache_All(t *testing.T) {
 	dic := mockDic()
-	newDeviceCache([]models.Device{testDevice}, dic)
+	newNodeCache([]models.Node{testNode}, dic)
 
 	res := dc.All()
-	require.Equal(t, len(res), len(dc.deviceMap))
+	require.Equal(t, len(res), len(dc.nodeMap))
 }
 
-func Test_deviceCache_Add(t *testing.T) {
+func Test_nodeCache_Add(t *testing.T) {
 	dic := mockDic()
-	newDeviceCache([]models.Device{testDevice}, dic)
+	newNodeCache([]models.Node{testNode}, dic)
 
 	tests := []struct {
 		name          string
 		expectedError bool
 	}{
 		{"Valid", false},
-		{"Invalid - duplicate Device name", true},
+		{"Invalid - duplicate Node name", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := dc.Add(newDevice)
+			err := dc.Add(newNode)
 			if tt.expectedError {
 				assert.NotNil(t, err)
 			} else {
@@ -114,20 +114,20 @@ func Test_deviceCache_Add(t *testing.T) {
 	}
 }
 
-func Test_deviceCache_RemoveByName(t *testing.T) {
+func Test_nodeCache_RemoveByName(t *testing.T) {
 	dic := mockDic()
-	newDeviceCache([]models.Device{testDevice}, dic)
+	newNodeCache([]models.Node{testNode}, dic)
 
 	tests := []struct {
 		name          string
 		expectedError bool
 	}{
 		{"Valid", false},
-		{"Invalid - nonexistent Device name", true},
+		{"Invalid - nonexistent Node name", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := dc.RemoveByName(TestDevice)
+			err := dc.RemoveByName(TestNode)
 			if tt.expectedError {
 				assert.NotNil(t, err)
 			} else {
@@ -137,23 +137,23 @@ func Test_deviceCache_RemoveByName(t *testing.T) {
 	}
 }
 
-func Test_deviceCache_UpdateAdminState(t *testing.T) {
+func Test_nodeCache_UpdateAdminState(t *testing.T) {
 	dic := mockDic()
-	newDeviceCache([]models.Device{testDevice}, dic)
+	newNodeCache([]models.Node{testNode}, dic)
 
 	tests := []struct {
 		name          string
-		deviceName    string
+		nodeName      string
 		state         models.AdminState
 		expectedError bool
 	}{
-		{"Invalid - nonexistent Device name", "nil", models.Locked, true},
-		{"Invalid - invalid AdminState", TestDevice, "INVALID", true},
-		{"Valid", TestDevice, models.Locked, false},
+		{"Invalid - nonexistent Node name", "nil", models.Locked, true},
+		{"Invalid - invalid AdminState", TestNode, "INVALID", true},
+		{"Valid", TestNode, models.Locked, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := dc.UpdateAdminState(tt.deviceName, tt.state)
+			err := dc.UpdateAdminState(tt.nodeName, tt.state)
 			if tt.expectedError {
 				assert.NotNil(t, err)
 			} else {
@@ -163,9 +163,9 @@ func Test_deviceCache_UpdateAdminState(t *testing.T) {
 	}
 }
 
-func Test_deviceCache_SetLastConnectedByName(t *testing.T) {
+func Test_nodeCache_SetLastConnectedByName(t *testing.T) {
 	dic := mockDic()
-	newDeviceCache([]models.Device{testDevice}, dic)
+	newNodeCache([]models.Node{testNode}, dic)
 
 	// Make currentTimestamp return currentTimeInstant constant in unit test
 	currentTimeInstant := time.Now().UnixNano()
@@ -173,15 +173,15 @@ func Test_deviceCache_SetLastConnectedByName(t *testing.T) {
 		return currentTimeInstant
 	}
 
-	dc.SetLastConnectedByName(TestDevice)
-	lastConnectedTime := dc.GetLastConnectedByName(TestDevice)
+	dc.SetLastConnectedByName(TestNode)
+	lastConnectedTime := dc.GetLastConnectedByName(TestNode)
 	require.Equal(t, currentTimeInstant, lastConnectedTime)
 }
 
-func Test_deviceCache_GetLastConnectedByName(t *testing.T) {
+func Test_nodeCache_GetLastConnectedByName(t *testing.T) {
 	dic := mockDic()
-	newDeviceCache([]models.Device{testDevice}, dic)
+	newNodeCache([]models.Node{testNode}, dic)
 
-	lastConnectedTime := dc.GetLastConnectedByName(TestDevice)
+	lastConnectedTime := dc.GetLastConnectedByName(TestNode)
 	require.Equal(t, int64(0), lastConnectedTime)
 }

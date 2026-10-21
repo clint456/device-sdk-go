@@ -8,33 +8,33 @@ package utils
 import (
 	"context"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
-	sdkModels "github.com/edgexfoundry/device-sdk-go/v4/pkg/models"
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/common"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos"
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
+	sdkModels "github.com/edgexfoundry/south-sdk-go/v4/pkg/models"
 )
 
-func PublishDeviceDiscoveryProgressSystemEvent(id string, progress, discoveredDeviceCount int, message string, ctx context.Context, dic *di.Container) {
+func PublishNodeDiscoveryProgressSystemEvent(id string, progress, discoveredNodeCount int, message string, ctx context.Context, dic *di.Container) {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	lc.Debugf("Publishing device discovery progress system event. Correlation Id: %s", id)
-	details := sdkModels.DeviceDiscoveryProgress{Progress: sdkModels.Progress{RequestId: id, Progress: progress, Message: message}, DiscoveredDeviceCount: discoveredDeviceCount}
-	PublishGenericSystemEvent(common.DeviceSystemEventType, common.SystemEventActionDiscovery, details, ctx, dic)
+	lc.Debugf("Publishing node discovery progress system event. Correlation Id: %s", id)
+	details := sdkModels.NodeDiscoveryProgress{Progress: sdkModels.Progress{RequestId: id, Progress: progress, Message: message}, DiscoveredNodeCount: discoveredNodeCount}
+	PublishGenericSystemEvent(common.NodeSystemEventType, common.SystemEventActionDiscovery, details, ctx, dic)
 }
 
 func PublishProfileScanProgressSystemEvent(id string, progress int, message string, ctx context.Context, dic *di.Container) {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	lc.Debugf("Publishing device profile scan progress system event. Correlation Id: %s", id)
+	lc.Debugf("Publishing node profile scan progress system event. Correlation Id: %s", id)
 	details := sdkModels.Progress{RequestId: id, Progress: progress, Message: message}
-	PublishGenericSystemEvent(common.DeviceSystemEventType, common.SystemEventActionProfileScan, details, ctx, dic)
+	PublishGenericSystemEvent(common.NodeSystemEventType, common.SystemEventActionProfileScan, details, ctx, dic)
 }
 
 func PublishGenericSystemEvent(eventType, action string, details any, ctx context.Context, dic *di.Container) {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	config := container.ConfigurationFrom(dic.Get)
-	serviceName := container.DeviceServiceFrom(dic.Get).Name
+	serviceName := container.NodeServiceFrom(dic.Get).Name
 	messagingClient := bootstrapContainer.MessagingClientFrom(dic.Get)
 	if messagingClient == nil {
 		lc.Errorf("unable to publish '%s' '%s' System Event: MessageBus Client not available. Please update MessageBus configuration to enable sending System Events via the EdgeX MessageBus", eventType, action)

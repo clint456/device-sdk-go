@@ -1,6 +1,6 @@
 {
    "name":"Simple-Provision-Watcher",
-   "serviceName":"device-simple",
+   "serviceName":"node-simple",
    "labels":[
       "simple"
    ],
@@ -16,8 +16,8 @@
       ]
    },
    "adminState": "UNLOCKED",
-   "discoveredDevice":{
-      "profileName":"Simple-Device",
+   "discoveredNode":{
+      "profileName":"Simple-Node",
       "adminState":"UNLOCKED",
       "autoEvents":[
          {

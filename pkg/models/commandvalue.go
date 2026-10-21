@@ -24,8 +24,8 @@ const (
 // CommandValue is the struct to represent the reading value of a Get command coming
 // from ProtocolDrivers or the parameter of a Put command sending to ProtocolDrivers.
 type CommandValue struct {
-	// DeviceResourceName is the name of Device Resource for this command
-	DeviceResourceName string
+	// ResourceName is the name of Node Resource for this command
+	ResourceName string
 	// Type indicates what type of value was returned from the ProtocolDriver instance in
 	// response to HandleCommand being called to handle a single ResourceOperation.
 	Type string
@@ -36,28 +36,28 @@ type CommandValue struct {
 	// contained in the CommandValue was read by the ProtocolDriver
 	// instance.
 	Origin int64
-	// Tags allows device service to add custom information to the Event in order to
+	// Tags allows node service to add custom information to the Event in order to
 	// help identify its origin or otherwise label it before it is send to north side.
 	Tags map[string]string
 }
 
 // NewCommandValue create a CommandValue according to the valueType supplied.
-func NewCommandValue(deviceResourceName string, valueType string, value interface{}) (*CommandValue, error) {
+func NewCommandValue(resourceName string, valueType string, value interface{}) (*CommandValue, error) {
 	err := validate(valueType, value)
 	if err != nil {
 		return nil, errors.NewCommonEdgeX(errors.KindServerError, "failed to create CommandValue", err)
 	}
 
 	return &CommandValue{
-		DeviceResourceName: deviceResourceName,
-		Type:               valueType,
-		Value:              value,
-		Tags:               make(map[string]string)}, nil
+		ResourceName: resourceName,
+		Type:         valueType,
+		Value:        value,
+		Tags:         make(map[string]string)}, nil
 }
 
 // NewCommandValueWithOrigin wraps NewCommandValue, create a CommandValue and add the Origin field.
-func NewCommandValueWithOrigin(deviceResourceName string, valueType string, value interface{}, origin int64) (*CommandValue, error) {
-	cv, err := NewCommandValue(deviceResourceName, valueType, value)
+func NewCommandValueWithOrigin(resourceName string, valueType string, value interface{}, origin int64) (*CommandValue, error) {
+	cv, err := NewCommandValue(resourceName, valueType, value)
 	if err != nil {
 		return nil, errors.NewCommonEdgeXWrapper(err)
 	}
@@ -77,7 +77,7 @@ func (cv *CommandValue) ValueToString() string {
 
 // String returns a string representation of a CommandValue instance.
 func (cv *CommandValue) String() string {
-	return fmt.Sprintf("DeviceResource: %s, %s: %s", cv.DeviceResourceName, cv.Type, cv.ValueToString())
+	return fmt.Sprintf("Resource: %s, %s: %s", cv.ResourceName, cv.Type, cv.ValueToString())
 }
 
 // BoolValue returns the value in bool data type, and returns error if the Type is not Bool.

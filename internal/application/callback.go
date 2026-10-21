@@ -10,8 +10,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/cache"
-	"github.com/edgexfoundry/device-sdk-go/v4/internal/container"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/cache"
+	"github.com/edgexfoundry/south-sdk-go/v4/internal/container"
 
 	bootstrapContainer "github.com/edgexfoundry/go-mod-bootstrap/v4/bootstrap/container"
 	"github.com/edgexfoundry/go-mod-bootstrap/v4/di"
@@ -21,7 +21,7 @@ import (
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 )
 
-func UpdateProfile(profileRequest requests.DeviceProfileRequest, dic *di.Container) errors.EdgeX {
+func UpdateProfile(profileRequest requests.ProfileRequest, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 
 	_, ok := cache.Profiles().ForName(profileRequest.Profile.Name)
@@ -30,7 +30,7 @@ func UpdateProfile(profileRequest requests.DeviceProfileRequest, dic *di.Contain
 		return errors.NewCommonEdgeX(errors.KindInvalidId, errMsg, nil)
 	}
 
-	err := cache.Profiles().Update(dtos.ToDeviceProfileModel(profileRequest.Profile))
+	err := cache.Profiles().Update(dtos.ToProfileModel(profileRequest.Profile))
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to update profile %s", profileRequest.Profile.Name)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
@@ -39,14 +39,14 @@ func UpdateProfile(profileRequest requests.DeviceProfileRequest, dic *di.Contain
 	lc.Debugf("profile %s updated", profileRequest.Profile.Name)
 
 	driver := container.ProtocolDriverFrom(dic.Get)
-	devices := cache.Devices().All()
-	for _, d := range devices {
+	nodes := cache.Nodes().All()
+	for _, d := range nodes {
 		if d.ProfileName == profileRequest.Profile.Name {
-			if err := driver.UpdateDevice(d.Name, d.Protocols, d.AdminState); err != nil {
-				errMsg := fmt.Sprintf("driver.UpdateDevice callback failed for %s", d.Name)
+			if err := driver.UpdateNode(d.Name, d.Protocols, d.AdminState); err != nil {
+				errMsg := fmt.Sprintf("driver.UpdateNode callback failed for %s", d.Name)
 				return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 			}
-			lc.Debugf("Invoked driver.UpdateDevice callback for %s", d.Name)
+			lc.Debugf("Invoked driver.UpdateNode callback for %s", d.Name)
 		}
 	}
 
@@ -58,144 +58,144 @@ func DeleteProfile(profileName string, dic *di.Container) errors.EdgeX {
 	if cache.CheckProfileNotUsed(profileName) {
 		err := cache.Profiles().RemoveByName(profileName)
 		if err != nil {
-			errMsg := fmt.Sprintf("failed to remove device profile %s", profileName)
+			errMsg := fmt.Sprintf("failed to remove node profile %s", profileName)
 			return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 		}
 		lc.Debugf("profile %s is removed from cache", profileName)
 	} else {
-		lc.Warnf("received Profile Deletion System Event for %s, but the profile is still used by some devices", profileName)
+		lc.Warnf("received Profile Deletion System Event for %s, but the profile is still used by some nodes", profileName)
 	}
 
 	return nil
 }
 
-func AddDevice(addDeviceRequest requests.AddDeviceRequest, dic *di.Container) errors.EdgeX {
-	device := dtos.ToDeviceModel(addDeviceRequest.Device)
+func AddNode(addNodeRequest requests.AddNodeRequest, dic *di.Container) errors.EdgeX {
+	node := dtos.ToNodeModel(addNodeRequest.Node)
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	var edgexErr errors.EdgeX
-	if addDeviceRequest.Device.ProfileName != "" {
-		edgexErr = updateAssociatedProfile(device.ProfileName, dic)
+	if addNodeRequest.Node.ProfileName != "" {
+		edgexErr = updateAssociatedProfile(node.ProfileName, dic)
 		if edgexErr != nil {
 			return errors.NewCommonEdgeXWrapper(edgexErr)
 		}
 	}
 
-	edgexErr = cache.Devices().Add(device)
+	edgexErr = cache.Nodes().Add(node)
 	if edgexErr != nil {
-		errMsg := fmt.Sprintf("failed to add device %s", device.Name)
+		errMsg := fmt.Sprintf("failed to add node %s", node.Name)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, edgexErr)
 	}
-	lc.Debugf("device %s added", device.Name)
+	lc.Debugf("node %s added", node.Name)
 
 	driver := container.ProtocolDriverFrom(dic.Get)
-	err := driver.AddDevice(device.Name, device.Protocols, device.AdminState)
+	err := driver.AddNode(node.Name, node.Protocols, node.AdminState)
 	if err == nil {
-		lc.Debugf("Invoked driver.AddDevice callback for %s", device.Name)
+		lc.Debugf("Invoked driver.AddNode callback for %s", node.Name)
 	} else {
-		errMsg := fmt.Sprintf("driver.AddDevice callback failed for %s", device.Name)
+		errMsg := fmt.Sprintf("driver.AddNode callback failed for %s", node.Name)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	config := container.ConfigurationFrom(dic.Get)
 	reqFailsTracker := container.AllowedRequestFailuresTrackerFrom(dic.Get)
-	reqFailsTracker.Set(device.Name, int(config.Device.AllowedFails)) // #nosec G115
+	reqFailsTracker.Set(node.Name, int(config.Node.AllowedFails)) // #nosec G115
 
-	lc.Debugf("starting AutoEvents for device %s", device.Name)
-	container.AutoEventManagerFrom(dic.Get).RestartForDevice(device.Name)
+	lc.Debugf("starting AutoEvents for node %s", node.Name)
+	container.AutoEventManagerFrom(dic.Get).RestartForNode(node.Name)
 	return nil
 }
 
-func UpdateDevice(updateDeviceRequest requests.UpdateDeviceRequest, dic *di.Container) errors.EdgeX {
+func UpdateNode(updateNodeRequest requests.UpdateNodeRequest, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	ds := container.DeviceServiceFrom(dic.Get)
+	ds := container.NodeServiceFrom(dic.Get)
 
-	device, exist := cache.Devices().ForName(*updateDeviceRequest.Device.Name)
+	node, exist := cache.Nodes().ForName(*updateNodeRequest.Node.Name)
 	if !exist {
-		// scenario that device migrates from another device service to here
-		if ds.Name == *updateDeviceRequest.Device.ServiceName {
-			var newDevice models.Device
-			requests.ReplaceDeviceModelFieldsWithDTO(&newDevice, updateDeviceRequest.Device)
-			newDevice.Name = *updateDeviceRequest.Device.Name
-			newDevice.Id = *updateDeviceRequest.Device.Id
-			req := requests.NewAddDeviceRequest(dtos.FromDeviceModelToDTO(newDevice))
-			return AddDevice(req, dic)
+		// scenario that node migrates from another node service to here
+		if ds.Name == *updateNodeRequest.Node.ServiceName {
+			var newNode models.Node
+			requests.ReplaceNodeModelFieldsWithDTO(&newNode, updateNodeRequest.Node)
+			newNode.Name = *updateNodeRequest.Node.Name
+			newNode.Id = *updateNodeRequest.Node.Id
+			req := requests.NewAddNodeRequest(dtos.FromNodeModelToDTO(newNode))
+			return AddNode(req, dic)
 		} else {
-			errMsg := fmt.Sprintf("failed to find device %s", *updateDeviceRequest.Device.ServiceName)
+			errMsg := fmt.Sprintf("failed to find node %s", *updateNodeRequest.Node.ServiceName)
 			return errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 		}
 	}
-	// scenario that device is moving to another device service
-	if ds.Name != *updateDeviceRequest.Device.ServiceName {
-		return DeleteDevice(*updateDeviceRequest.Device.Name, dic)
+	// scenario that node is moving to another node service
+	if ds.Name != *updateNodeRequest.Node.ServiceName {
+		return DeleteNode(*updateNodeRequest.Node.Name, dic)
 	}
 
-	requests.ReplaceDeviceModelFieldsWithDTO(&device, updateDeviceRequest.Device)
+	requests.ReplaceNodeModelFieldsWithDTO(&node, updateNodeRequest.Node)
 	var edgexErr errors.EdgeX
-	if device.ProfileName != "" {
-		edgexErr = updateAssociatedProfile(device.ProfileName, dic)
+	if node.ProfileName != "" {
+		edgexErr = updateAssociatedProfile(node.ProfileName, dic)
 		if edgexErr != nil {
 			return errors.NewCommonEdgeXWrapper(edgexErr)
 		}
 	}
 
-	edgexErr = cache.Devices().Update(device)
+	edgexErr = cache.Nodes().Update(node)
 	if edgexErr != nil {
-		errMsg := fmt.Sprintf("failed to update device %s", device.Name)
+		errMsg := fmt.Sprintf("failed to update node %s", node.Name)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, edgexErr)
 	}
-	lc.Debugf("device %s updated", device.Name)
+	lc.Debugf("node %s updated", node.Name)
 
 	driver := container.ProtocolDriverFrom(dic.Get)
-	err := driver.UpdateDevice(device.Name, device.Protocols, device.AdminState)
+	err := driver.UpdateNode(node.Name, node.Protocols, node.AdminState)
 	if err == nil {
-		lc.Debugf("Invoked driver.UpdateDevice callback for %s", device.Name)
+		lc.Debugf("Invoked driver.UpdateNode callback for %s", node.Name)
 	} else {
-		errMsg := fmt.Sprintf("driver.UpdateDevice callback failed for %s", device.Name)
+		errMsg := fmt.Sprintf("driver.UpdateNode callback failed for %s", node.Name)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	autoEventManager := container.AutoEventManagerFrom(dic.Get)
-	if device.AdminState == models.Locked {
-		lc.Debugf("stopping AutoEvents for the locked device %s", device.Name)
-		autoEventManager.StopForDevice(device.Name)
+	if node.AdminState == models.Locked {
+		lc.Debugf("stopping AutoEvents for the locked node %s", node.Name)
+		autoEventManager.StopForNode(node.Name)
 	} else {
-		lc.Debugf("starting AutoEvents for device %s", device.Name)
-		autoEventManager.RestartForDevice(device.Name)
+		lc.Debugf("starting AutoEvents for node %s", node.Name)
+		autoEventManager.RestartForNode(node.Name)
 	}
 	return nil
 }
 
-func DeleteDevice(name string, dic *di.Container) errors.EdgeX {
+func DeleteNode(name string, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	// check the device exist and stop its autoevents
-	device, ok := cache.Devices().ForName(name)
+	// check the node exist and stop its autoevents
+	node, ok := cache.Nodes().ForName(name)
 	if ok {
-		lc.Debugf("stopping AutoEvents for device %s", device.Name)
-		container.AutoEventManagerFrom(dic.Get).StopForDevice(device.Name)
+		lc.Debugf("stopping AutoEvents for node %s", node.Name)
+		container.AutoEventManagerFrom(dic.Get).StopForNode(node.Name)
 	} else {
-		errMsg := fmt.Sprintf("failed to find device %s", name)
+		errMsg := fmt.Sprintf("failed to find node %s", name)
 		return errors.NewCommonEdgeX(errors.KindInvalidId, errMsg, nil)
 	}
 
-	// remove the device in cache
-	edgexErr := cache.Devices().RemoveByName(name)
+	// remove the node in cache
+	edgexErr := cache.Nodes().RemoveByName(name)
 	if edgexErr != nil {
-		errMsg := fmt.Sprintf("failed to remove device %s", device.Name)
+		errMsg := fmt.Sprintf("failed to remove node %s", node.Name)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, edgexErr)
 	}
-	lc.Debugf("Removed device: %s", device.Name)
+	lc.Debugf("Removed node: %s", node.Name)
 
 	driver := container.ProtocolDriverFrom(dic.Get)
-	err := driver.RemoveDevice(device.Name, device.Protocols)
+	err := driver.RemoveNode(node.Name, node.Protocols)
 	if err == nil {
-		lc.Debugf("Invoked driver.RemoveDevice callback for %s", device.Name)
+		lc.Debugf("Invoked driver.RemoveNode callback for %s", node.Name)
 	} else {
-		errMsg := fmt.Sprintf("driver.RemoveDevice callback failed for %s", device.Name)
+		errMsg := fmt.Sprintf("driver.RemoveNode callback failed for %s", node.Name)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 	}
 
 	reqFailsTracker := container.AllowedRequestFailuresTrackerFrom(dic.Get)
-	reqFailsTracker.Remove(device.Name)
+	reqFailsTracker.Remove(node.Name)
 
 	return nil
 }
@@ -204,7 +204,7 @@ func AddProvisionWatcher(addProvisionWatcherRequest requests.AddProvisionWatcher
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
 	provisionWatcher := dtos.ToProvisionWatcherModel(addProvisionWatcherRequest.ProvisionWatcher)
 
-	edgexErr := updateAssociatedProfile(provisionWatcher.DiscoveredDevice.ProfileName, dic)
+	edgexErr := updateAssociatedProfile(provisionWatcher.DiscoveredNode.ProfileName, dic)
 	if edgexErr != nil {
 		return errors.NewCommonEdgeXWrapper(edgexErr)
 	}
@@ -221,7 +221,7 @@ func AddProvisionWatcher(addProvisionWatcherRequest requests.AddProvisionWatcher
 
 func UpdateProvisionWatcher(updateProvisionWatcherRequest requests.UpdateProvisionWatcherRequest, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	ds := container.DeviceServiceFrom(dic.Get)
+	ds := container.NodeServiceFrom(dic.Get)
 
 	provisionWatcher, exist := cache.ProvisionWatchers().ForName(*updateProvisionWatcherRequest.ProvisionWatcher.Name)
 	if !exist {
@@ -240,7 +240,7 @@ func UpdateProvisionWatcher(updateProvisionWatcherRequest requests.UpdateProvisi
 	}
 
 	requests.ReplaceProvisionWatcherModelFieldsWithDTO(&provisionWatcher, updateProvisionWatcherRequest.ProvisionWatcher)
-	edgexErr := updateAssociatedProfile(provisionWatcher.DiscoveredDevice.ProfileName, dic)
+	edgexErr := updateAssociatedProfile(provisionWatcher.DiscoveredNode.ProfileName, dic)
 	if edgexErr != nil {
 		return errors.NewCommonEdgeXWrapper(edgexErr)
 	}
@@ -267,31 +267,31 @@ func DeleteProvisionWatcher(name string, dic *di.Container) errors.EdgeX {
 	return nil
 }
 
-func UpdateDeviceService(updateDeviceServiceRequest requests.UpdateDeviceServiceRequest, dic *di.Container) errors.EdgeX {
+func UpdateNodeService(updateNodeServiceRequest requests.UpdateNodeServiceRequest, dic *di.Container) errors.EdgeX {
 	lc := bootstrapContainer.LoggingClientFrom(dic.Get)
-	ds := container.DeviceServiceFrom(dic.Get)
+	ds := container.NodeServiceFrom(dic.Get)
 
-	// we use request.Service.Name to identify the device service (i.e. it's not updatable)
-	// so if the request's service name is inconsistent with device service name
+	// we use request.Service.Name to identify the node service (i.e. it's not updatable)
+	// so if the request's service name is inconsistent with node service name
 	// we should not update it.
-	if ds.Name != *updateDeviceServiceRequest.Service.Name {
-		errMsg := fmt.Sprintf("failed to identify device service %s", *updateDeviceServiceRequest.Service.Name)
+	if ds.Name != *updateNodeServiceRequest.Service.Name {
+		errMsg := fmt.Sprintf("failed to identify node service %s", *updateNodeServiceRequest.Service.Name)
 		return errors.NewCommonEdgeX(errors.KindEntityDoesNotExist, errMsg, nil)
 	}
 
-	ds.AdminState = models.AdminState(*updateDeviceServiceRequest.Service.AdminState)
-	ds.Labels = updateDeviceServiceRequest.Service.Labels
+	ds.AdminState = models.AdminState(*updateNodeServiceRequest.Service.AdminState)
+	ds.Labels = updateNodeServiceRequest.Service.Labels
 
-	lc.Debug("device service updated")
+	lc.Debug("node service updated")
 	return nil
 }
 
-// updateAssociatedProfile updates the profile specified in AddDeviceRequest or UpdateDeviceRequest or AddProvisionWatcherRequest or UpdateProvisionWatcherRequest
+// updateAssociatedProfile updates the profile specified in AddNodeRequest or UpdateNodeRequest or AddProvisionWatcherRequest or UpdateProvisionWatcherRequest
 // to stay consistent with core metadata.
 func updateAssociatedProfile(profileName string, dic *di.Container) errors.EdgeX {
-	dpc := bootstrapContainer.DeviceProfileClientFrom(dic.Get)
+	dpc := bootstrapContainer.ProfileClientFrom(dic.Get)
 
-	res, err := dpc.DeviceProfileByName(context.Background(), profileName)
+	res, err := dpc.ProfileByName(context.Background(), profileName)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to retrieve profile %s from metadata", profileName)
 		return errors.NewCommonEdgeX(errors.KindInvalidId, errMsg, err)
@@ -299,14 +299,14 @@ func updateAssociatedProfile(profileName string, dic *di.Container) errors.EdgeX
 
 	_, exist := cache.Profiles().ForName(profileName)
 	if !exist {
-		err = cache.Profiles().Add(dtos.ToDeviceProfileModel(res.Profile))
+		err = cache.Profiles().Add(dtos.ToProfileModel(res.Profile))
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to add profile %s", profileName)
 			return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)
 		}
 		return nil
 	}
-	err = cache.Profiles().Update(dtos.ToDeviceProfileModel(res.Profile))
+	err = cache.Profiles().Update(dtos.ToProfileModel(res.Profile))
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to to update profile %s in cache, using the original one", profileName)
 		return errors.NewCommonEdgeX(errors.KindServerError, errMsg, err)

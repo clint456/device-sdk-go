@@ -1,4 +1,4 @@
-The following open source projects are referenced by Device Service SDK Go:
+The following open source projects are referenced by Node Service SDK Go:
 
 hashicorp/consul 1.1.0 (Mozilla Public License 2.0) https://github.com/hashicorp/consul
 https://github.com/hashicorp/consul/blob/master/LICENSE

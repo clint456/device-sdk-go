@@ -1,8 +1,8 @@
 [
   {
-    "name": "Simple-Device01",
-    "profileName": "Simple-Device",
-    "description": "Example of Simple Device",
+    "name": "Simple-Node01",
+    "profileName": "Simple-Node",
+    "description": "Example of Simple Node",
     "labels": ["industrial"],
     "protocols": {
       "other": {

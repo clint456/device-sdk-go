@@ -27,46 +27,46 @@ type Reading struct {
 	ReadingUnits bool
 }
 
-// DeviceInfo is a struct which contains device specific configuration settings.
-type DeviceInfo struct {
+// NodeInfo is a struct which contains node specific configuration settings.
+type NodeInfo struct {
 	// DataTransform specifies whether or not the DS perform transformations
 	// specified by value descriptor on a actuation or query command.
 	DataTransform bool
 	// MaxCmdOps defines the maximum number of resource operations that
 	// can be sent to a Driver in a single command.
 	MaxCmdOps int
-	// ProfilesDir specifies a directory which contains device profiles
+	// ProfilesDir specifies a directory which contains node profiles
 	// files which should be imported on startup.
 	ProfilesDir string
-	// DevicesDir specifies a directory contains devices files which should be imported on startup.
-	DevicesDir string
+	// NodesDir specifies a directory contains nodes files which should be imported on startup.
+	NodesDir string
 	// ProvisionWatchersDir specifies a directory contains provision watcher files which should be imported on startup.
 	ProvisionWatchersDir string
 	Discovery            DiscoveryInfo
 	// AsyncBufferSize defines the size of asynchronous channel
 	AsyncBufferSize int
-	// EnableAsyncReadings to determine whether the Device Service would deal with the asynchronous readings
+	// EnableAsyncReadings to determine whether the Node Service would deal with the asynchronous readings
 	EnableAsyncReadings bool
-	// Labels are properties applied to the device service to help with searching
+	// Labels are properties applied to the node service to help with searching
 	Labels []string
-	// AllowedFails specifies the number of failed requests allowed before a device is marked as down.
+	// AllowedFails specifies the number of failed requests allowed before a node is marked as down.
 	AllowedFails uint
-	// DeviceDownTimeout specifies the duration in seconds that the Device Service will try to contact a device if it is marked as down.
-	DeviceDownTimeout uint
-	// AutoEvents defines the configuration related to the generated auto events for the device service
+	// NodeDownTimeout specifies the duration in seconds that the Node Service will try to contact a node if it is marked as down.
+	NodeDownTimeout uint
+	// AutoEvents defines the configuration related to the generated auto events for the node service
 	AutoEvents AutoEventInfo
 }
 
-// DiscoveryInfo is a struct which contains configuration of device auto discovery.
+// DiscoveryInfo is a struct which contains configuration of node auto discovery.
 type DiscoveryInfo struct {
-	// Enabled controls whether or not device discovery is enabled.
+	// Enabled controls whether or not node discovery is enabled.
 	Enabled bool
 	// Interval indicates how often the discovery process will be triggered.
 	// It represents as a duration string.
 	Interval string
 }
 
-// Telemetry provides metrics (on a given device service) to system management.
+// Telemetry provides metrics (on a given node service) to system management.
 type Telemetry struct {
 	Alloc,
 	TotalAlloc,
