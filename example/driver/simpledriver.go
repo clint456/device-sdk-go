@@ -378,7 +378,7 @@ func (s *SimpleDriver) ProfileScan(payload requests.ProfileScanRequest) (models.
 		return models.Profile{}, fmt.Errorf("profile scanning is stopped")
 	}
 	time.Sleep(time.Duration(s.serviceConfig.SimpleCustom.Writable.DiscoverSleepDurationSecs) * time.Second)
-	return models.Profile{Name: payload.ProfileName}, nil
+	return models.Profile{ProfileBasicInfo: models.ProfileBasicInfo{Name: payload.ProfileName}}, nil
 }
 
 func (s *SimpleDriver) StopNodeDiscovery(options map[string]any) {

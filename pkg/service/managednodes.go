@@ -44,7 +44,9 @@ func (s *nodeService) addNode(node models.Node, bypassValidation bool) (string, 
 	}
 
 	node.ServiceName = s.serviceKey
-	node.Direction = models.South
+	if node.Type == "" {
+		node.Type = models.NodeTypeDevice
+	}
 
 	if bypassValidation {
 		s.lc.Debugf("Adding managed Node %s without validation", node.Name)

@@ -301,6 +301,7 @@ func (s *nodeService) selfRegister() edgexErr.EdgeX {
 		Labels:      s.config.Node.Labels,
 		BaseAddress: bootstrapTypes.DefaultHttpProtocol + "://" + s.config.Service.Host + ":" + strconv.FormatInt(int64(s.config.Service.Port), 10),
 		AdminState:  models.Unlocked,
+		ServiceType: models.ServiceTypeSouth,
 		Properties:  make(map[string]any),
 	}
 	*s.nodeServiceModel = localNodeService

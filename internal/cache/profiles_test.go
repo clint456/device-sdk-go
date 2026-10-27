@@ -16,7 +16,7 @@ import (
 )
 
 var testProfile = models.Profile{
-	Name: TestProfile,
+	ProfileBasicInfo: models.ProfileBasicInfo{Name: TestProfile},
 	Resources: []models.Resource{
 		models.Resource{Name: TestResource},
 		models.Resource{Name: TestResource + "suffix"},
@@ -33,7 +33,7 @@ var testProfile = models.Profile{
 }
 
 var newProfile = models.Profile{
-	Name: "newProfile",
+	ProfileBasicInfo: models.ProfileBasicInfo{Name: "newProfile"},
 	Resources: []models.Resource{
 		models.Resource{Name: "newResource"},
 	},

@@ -29,6 +29,9 @@ func (s *nodeService) AddProfile(profile models.Profile) (string, error) {
 		return p.Id, errors.NewCommonEdgeX(errors.KindDuplicateName, fmt.Sprintf("name conflicted, Profile %s exists", profile.Name), nil)
 	}
 
+	// Assign model ids and normalize the model side of the resource/command references.
+	profile.EnsureIds()
+
 	s.lc.Debugf("Adding managed Profile %s", profile.Name)
 	req := requests.NewProfileRequest(dtos.FromProfileModelToDTO(profile))
 	ctx := context.WithValue(context.Background(), common.CorrelationHeader, uuid.NewString()) // nolint:staticcheck
@@ -95,6 +98,8 @@ func (s *nodeService) UpdateProfile(profile models.Profile) error {
 	}
 
 	s.lc.Debugf("Updating managed Profile %s", profile.Name)
+	// Assign model ids for newly added resources/commands and normalize references.
+	profile.EnsureIds()
 	req := requests.NewProfileRequest(dtos.FromProfileModelToDTO(profile))
 	ctx := context.WithValue(context.Background(), common.CorrelationHeader, uuid.NewString()) // nolint:staticcheck
 	_, err := container.ProfileClientFrom(s.dic.Get).Update(ctx, []requests.ProfileRequest{req})

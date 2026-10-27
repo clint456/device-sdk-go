@@ -222,7 +222,9 @@ func processNodes(fullPath, displayPath, serviceName string, overwrite bool, sec
 				node.ServiceName = cachedDev.ServiceName
 				node.AdminState = string(cachedDev.AdminState)
 				node.OperatingState = string(cachedDev.OperatingState)
-				node.Direction = models.South
+				if node.Type == "" {
+					node.Type = string(models.NodeTypeDevice)
+				}
 
 				update := dtos.FromNodeModelToUpdateDTO(dtos.ToNodeModel(node))
 				req := requests.NewUpdateNodeRequest(update)
@@ -235,7 +237,9 @@ func processNodes(fullPath, displayPath, serviceName string, overwrite bool, sec
 			node.ServiceName = serviceName
 			node.AdminState = models.Unlocked
 			node.OperatingState = models.Up
-			node.Direction = models.South
+			if node.Type == "" {
+				node.Type = string(models.NodeTypeDevice)
+			}
 			req := requests.NewAddNodeRequest(node)
 			addNodesReq = append(addNodesReq, req)
 		}

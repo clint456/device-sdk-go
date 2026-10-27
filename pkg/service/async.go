@@ -113,7 +113,7 @@ func (s *nodeService) processAsyncFilterAndAdd(ctx context.Context) {
 							ServiceName:    s.serviceKey,
 							AdminState:     pw.DiscoveredNode.AdminState,
 							OperatingState: models.Up,
-							Direction:      models.South,
+							Type:           models.NodeTypeDevice,
 							AutoEvents:     pw.DiscoveredNode.AutoEvents,
 							Properties:     pw.DiscoveredNode.Properties,
 						}
